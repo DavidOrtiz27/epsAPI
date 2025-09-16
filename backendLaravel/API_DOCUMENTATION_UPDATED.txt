@@ -1,0 +1,305 @@
+================================================================================
+                    API LARAVEL - DOCUMENTACIÓN COMPLETA ACTUALIZADA
+================================================================================
+
+SISTEMA DE GESTIÓN MÉDICA CON AUTENTICACIÓN SANCTUM Y ROLES
+Versión: 2.0 - Actualizado con CRUD completo
+
+================================================================================
+1. ENDPOINTS PÚBLICOS (Sin autenticación requerida)
+================================================================================
+
+1.1 REGISTRO DE PACIENTES
+================================================================================
+Endpoint: POST /api/auth/register
+Descripción: Registra un nuevo usuario con rol de paciente automáticamente
+Autenticación: No requerida
+
+PARÁMETROS REQUERIDOS:
+- name: string (255) - Nombre completo del usuario
+- email: string (255) - Correo electrónico único
+- password: string (8+) - Contraseña
+- documento: string (50) - Documento de identidad único
+
+PARÁMETROS OPCIONALES:
+- telefono: string (50) - Número de teléfono
+- direccion: string (255) - Dirección de residencia
+- fecha_nacimiento: date - Fecha de nacimiento (YYYY-MM-DD)
+- genero: enum - Género (M=Masculino, F=Femenino, O=Otro)
+
+================================================================================
+
+1.2 INICIO DE SESIÓN
+================================================================================
+Endpoint: POST /api/auth/login
+Descripción: Autentica un usuario y devuelve token de acceso
+Autenticación: No requerida
+
+PARÁMETROS REQUERIDOS:
+- email: string - Correo electrónico del usuario
+- password: string - Contraseña del usuario
+
+================================================================================
+2. ENDPOINTS AUTENTICADOS (Requieren token Bearer)
+================================================================================
+
+================================================================================
+2.1 ENDPOINTS COMUNES (Todos los usuarios autenticados)
+================================================================================
+
+2.1.1 CERRAR SESIÓN
+Endpoint: POST /api/auth/logout
+Descripción: Invalida el token actual del usuario
+
+2.1.2 NOTIFICACIONES DEL USUARIO
+Endpoint: GET /api/notificaciones
+Descripción: Obtiene las notificaciones del usuario autenticado
+
+Endpoint: PUT /api/notificaciones/{id}/read
+Descripción: Marca una notificación como leída
+
+================================================================================
+3. ENDPOINTS DE PACIENTES (Rol: paciente)
+================================================================================
+
+3.1 PERFIL DEL PACIENTE
+- GET /api/pacientes/profile - Ver perfil propio
+- PUT /api/pacientes/profile - Actualizar perfil propio
+
+3.2 GESTIÓN DE CITAS
+- GET /api/pacientes/citas - Ver citas propias
+
+3.3 HISTORIAL MÉDICO
+- GET /api/pacientes/historial - Ver historial médico propio
+
+3.4 FACTURAS
+- GET /api/pacientes/facturas - Ver facturas propias
+
+================================================================================
+4. ENDPOINTS DE DOCTORES (Rol: doctor)
+================================================================================
+
+4.1 GESTIÓN DE PACIENTES
+- GET /api/medicos/pacientes - Ver pacientes asignados
+- GET /api/medicos/pacientes/{id}/historial - Ver historial de paciente específico
+
+4.2 GESTIÓN DE CITAS
+- GET /api/medicos/citas - Ver citas propias
+- PUT /api/medicos/citas/{id}/estado - Actualizar estado de cita
+
+4.3 REGISTROS MÉDICOS
+- POST /api/medicos/historial-clinico - Crear historial clínico
+- POST /api/medicos/tratamientos - Crear tratamiento
+- POST /api/medicos/recetas-medicas - Crear receta médica
+- POST /api/medicos/examenes - Crear examen
+
+4.4 CATÁLOGOS
+- GET /api/medicamentos - Ver medicamentos
+- GET /api/medicamentos/search - Buscar medicamentos
+- GET /api/especialidades - Ver especialidades
+
+================================================================================
+5. ENDPOINTS DE ADMINISTRADORES (Rol: admin)
+================================================================================
+
+5.1 CREACIÓN DE USUARIOS
+- POST /api/admin/create-doctor - Crear nuevo doctor
+
+5.2 CRUD COMPLETO DE TODAS LAS ENTIDADES
+
+5.2.1 PACIENTES
+- GET /api/pacientes - Listar todos
+- POST /api/pacientes - Crear paciente
+- GET /api/pacientes/{id} - Ver paciente específico
+- PUT /api/pacientes/{id} - Actualizar paciente
+- DELETE /api/pacientes/{id} - Eliminar paciente
+
+5.2.2 MÉDICOS
+- GET /api/medicos - Listar todos
+- POST /api/medicos - Crear médico
+- GET /api/medicos/{id} - Ver médico específico
+- PUT /api/medicos/{id} - Actualizar médico
+- DELETE /api/medicos/{id} - Eliminar médico
+
+5.2.3 CITAS
+- GET /api/citas - Listar todas
+- POST /api/citas - Crear cita
+- GET /api/citas/{id} - Ver cita específica
+- PUT /api/citas/{id} - Actualizar cita
+- DELETE /api/citas/{id} - Eliminar cita
+
+5.2.4 HISTORIAL CLÍNICO
+- GET /api/historial-clinico - Listar todos
+- POST /api/historial-clinico - Crear registro
+- GET /api/historial-clinico/{id} - Ver registro específico
+- PUT /api/historial-clinico/{id} - Actualizar registro
+- DELETE /api/historial-clinico/{id} - Eliminar registro
+
+5.2.5 TRATAMIENTOS
+- GET /api/tratamientos - Listar todos
+- POST /api/tratamientos - Crear tratamiento
+- GET /api/tratamientos/{id} - Ver tratamiento específico
+- PUT /api/tratamientos/{id} - Actualizar tratamiento
+- DELETE /api/tratamientos/{id} - Eliminar tratamiento
+
+5.2.6 MEDICAMENTOS
+- GET /api/medicamentos - Listar todos
+- POST /api/medicamentos - Crear medicamento
+- GET /api/medicamentos/{id} - Ver medicamento específico
+- PUT /api/medicamentos/{id} - Actualizar medicamento
+- DELETE /api/medicamentos/{id} - Eliminar medicamento
+
+5.2.7 RECETAS MÉDICAS
+- GET /api/recetas-medicas - Listar todas
+- POST /api/recetas-medicas - Crear receta
+- GET /api/recetas-medicas/{id} - Ver receta específica
+- PUT /api/recetas-medicas/{id} - Actualizar receta
+- DELETE /api/recetas-medicas/{id} - Eliminar receta
+
+5.2.8 EXÁMENES
+- GET /api/examenes - Listar todos
+- POST /api/examenes - Crear examen
+- GET /api/examenes/{id} - Ver examen específico
+- PUT /api/examenes/{id} - Actualizar examen
+- DELETE /api/examenes/{id} - Eliminar examen
+
+5.2.9 FACTURAS
+- GET /api/facturas - Listar todas
+- POST /api/facturas - Crear factura
+- GET /api/facturas/{id} - Ver factura específica
+- PUT /api/facturas/{id} - Actualizar factura
+- DELETE /api/facturas/{id} - Eliminar factura
+
+5.2.10 PAGOS
+- GET /api/pagos - Listar todos
+- POST /api/pagos - Crear pago
+- GET /api/pagos/{id} - Ver pago específico
+- PUT /api/pagos/{id} - Actualizar pago
+- DELETE /api/pagos/{id} - Eliminar pago
+
+5.2.11 ESPECIALIDADES
+- GET /api/especialidades - Listar todas
+- POST /api/especialidades - Crear especialidad
+- GET /api/especialidades/{id} - Ver especialidad específica
+- PUT /api/especialidades/{id} - Actualizar especialidad
+- DELETE /api/especialidades/{id} - Eliminar especialidad
+
+5.2.12 HORARIOS MÉDICOS
+- GET /api/horarios-medicos - Listar todos
+- POST /api/horarios-medicos - Crear horario
+- GET /api/horarios-medicos/{id} - Ver horario específico
+- PUT /api/horarios-medicos/{id} - Actualizar horario
+- DELETE /api/horarios-medicos/{id} - Eliminar horario
+
+5.2.13 NOTIFICACIONES
+- GET /api/notificaciones - Listar todas
+- POST /api/notificaciones - Crear notificación
+- GET /api/notificaciones/{id} - Ver notificación específica
+- PUT /api/notificaciones/{id} - Actualizar notificación
+- DELETE /api/notificaciones/{id} - Eliminar notificación
+
+5.3 REPORTES Y ESTADÍSTICAS
+- GET /api/admin/dashboard/stats - Estadísticas generales
+- GET /api/admin/reportes/citas - Reportes de citas
+- GET /api/admin/reportes/facturas - Reportes de facturas
+
+================================================================================
+6. ENDPOINTS DE SUPERADMIN (Rol: superadmin)
+================================================================================
+
+6.1 GESTIÓN DE USUARIOS
+- GET /api/admin/users - Listar todos los usuarios
+- PUT /api/admin/users/{id}/roles - Actualizar rol de usuario
+- DELETE /api/admin/users/{id} - Eliminar usuario
+
+6.2 CREACIÓN DE ADMINISTRADORES
+- POST /api/admin/create-admin - Crear nuevo administrador
+
+6.3 AUDITORÍAS DEL SISTEMA
+- GET /api/auditorias - Ver todas las auditorías
+- POST /api/auditorias - Crear auditoría manual
+- GET /api/auditorias/{id} - Ver auditoría específica
+- PUT /api/auditorias/{id} - Actualizar auditoría
+- DELETE /api/auditorias/{id} - Eliminar auditoría
+
+================================================================================
+7. ENDPOINTS LEGACY/COMPATIBILIDAD
+================================================================================
+
+- GET /api/pacientes/{id}/citas - Ver citas de paciente (admin/doctor)
+- GET /api/pacientes/{id}/historial - Ver historial de paciente (admin/doctor)
+- GET /api/medicos/{id}/citas - Ver citas de médico (admin/doctor)
+- GET /api/medicos/{id}/pacientes - Ver pacientes de médico (admin/doctor)
+
+================================================================================
+8. EJEMPLOS DE USO CON DATOS DE PRUEBA
+================================================================================
+
+8.1 USUARIOS DE PRUEBA CREADOS:
+- Superadmin: superadmin@sistema.com / superadmin123
+- Admin: admin@sistema.com / admin123
+- Doctor: maria.gonzalez@hospital.com / password123
+- Pacientes: juan.perez@email.com y laura.martinez@email.com / password123
+
+8.2 EJEMPLOS DE REQUEST:
+
+# Login como paciente
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "juan.perez@email.com", "password": "password123"}'
+
+# Ver especialidades
+curl -X GET http://localhost:8000/api/especialidades \
+  -H "Authorization: Bearer TU_TOKEN"
+
+# Crear cita (como admin)
+curl -X POST http://localhost:8000/api/citas \
+  -H "Authorization: Bearer TU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paciente_id": 1,
+    "medico_id": 2,
+    "fecha": "2025-09-20 10:00:00",
+    "estado": "pendiente",
+    "motivo": "Consulta general"
+  }'
+
+================================================================================
+9. CÓDIGOS DE ERROR Y VALIDACIONES
+================================================================================
+
+400 Bad Request - Datos inválidos o faltantes
+401 Unauthorized - Token inválido o faltante
+403 Forbidden - Permisos insuficientes para la acción
+404 Not Found - Recurso no encontrado
+422 Unprocessable Entity - Validación fallida
+500 Internal Server Error - Error interno del servidor
+
+================================================================================
+10. NOTAS IMPORTANTES PARA DESARROLLO FRONTEND
+================================================================================
+
+- ✅ API completamente funcional con CRUD en todas las entidades
+- ✅ Autenticación robusta con Sanctum y roles
+- ✅ Validaciones completas en todos los endpoints
+- ✅ Relaciones de base de datos correctamente configuradas
+- ✅ Manejo de errores consistente
+- ✅ Documentación completa actualizada
+- ✅ Datos de prueba incluidos para desarrollo
+- ✅ Endpoints legacy para compatibilidad
+
+================================================================================
+11. PRÓXIMOS PASOS PARA INTEGRACIÓN FRONTEND
+================================================================================
+
+1. Configurar CORS en Laravel para el dominio del frontend
+2. Implementar manejo de tokens en el frontend (localStorage/sessionStorage)
+3. Crear servicios HTTP para consumir la API
+4. Implementar guards/autenticación en el frontend
+5. Crear componentes para cada módulo (pacientes, médicos, citas, etc.)
+6. Implementar manejo de errores y loading states
+7. Configurar refresh tokens automáticamente
+
+================================================================================
+FIN DE LA DOCUMENTACIÓN ACTUALIZADA
+================================================================================

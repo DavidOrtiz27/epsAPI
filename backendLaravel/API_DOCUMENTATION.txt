@@ -1,0 +1,651 @@
+================================================================================
+                    API LARAVEL - DOCUMENTACIÓN COMPLETA
+================================================================================
+
+SISTEMA DE GESTIÓN MÉDICA CON AUTENTICACIÓN SANCTUM Y ROLES
+
+================================================================================
+1. ENDPOINTS PÚBLICOS (Sin autenticación requerida)
+================================================================================
+
+1.1 REGISTRO DE PACIENTES
+================================================================================
+Endpoint: POST /api/auth/register
+Descripción: Registra un nuevo usuario con rol de paciente automáticamente
+Autenticación: No requerida
+
+PARÁMETROS REQUERIDOS:
+- name: string (255) - Nombre completo del usuario
+- email: string (255) - Correo electrónico único
+- password: string (8+) - Contraseña
+- documento: string (50) - Documento de identidad único
+
+PARÁMETROS OPCIONALES:
+- telefono: string (50) - Número de teléfono
+- direccion: string (255) - Dirección de residencia
+- fecha_nacimiento: date - Fecha de nacimiento (YYYY-MM-DD)
+- genero: enum - Género (M=Masculino, F=Femenino, O=Otro)
+
+EJEMPLO DE REQUEST:
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Juan Pérez García",
+  "email": "juan.perez@email.com",
+  "password": "password123",
+  "documento": "1234567890",
+  "telefono": "3001234567",
+  "direccion": "Calle 123 #45-67, Bogotá",
+  "fecha_nacimiento": "1990-05-15",
+  "genero": "M"
+}
+
+EJEMPLO DE RESPONSE EXITOSO:
+{
+  "user": {
+    "id": 1,
+    "name": "Juan Pérez García",
+    "email": "juan.perez@email.com",
+    "roles": [
+      {
+        "id": 4,
+        "name": "paciente"
+      }
+    ]
+  },
+  "token": "1|abc123def456..."
+}
+
+================================================================================
+
+1.2 INICIO DE SESIÓN
+================================================================================
+Endpoint: POST /api/auth/login
+Descripción: Autentica un usuario y devuelve token de acceso
+Autenticación: No requerida
+
+PARÁMETROS REQUERIDOS:
+- email: string - Correo electrónico del usuario
+- password: string - Contraseña del usuario
+
+EJEMPLO DE REQUEST:
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "juan.perez@email.com",
+  "password": "password123"
+}
+
+EJEMPLO DE RESPONSE EXITOSO:
+{
+  "user": {
+    "id": 1,
+    "name": "Juan Pérez García",
+    "email": "juan.perez@email.com",
+    "roles": [
+      {
+        "id": 4,
+        "name": "paciente"
+      }
+    ]
+  },
+  "token": "1|abc123def456..."
+}
+
+================================================================================
+2. ENDPOINTS AUTENTICADOS (Requieren token Bearer)
+================================================================================
+
+================================================================================
+2.1 ENDPOINTS COMUNES (Todos los usuarios autenticados)
+================================================================================
+
+2.1.1 INFORMACIÓN DEL USUARIO ACTUAL
+================================================================================
+Endpoint: GET /api/auth/me
+Descripción: Obtiene información del usuario autenticado
+Autenticación: Token Bearer requerido
+
+PARÁMETROS: Ninguno (usa token de autenticación)
+
+EJEMPLO DE REQUEST:
+GET /api/auth/me
+Authorization: Bearer 1|abc123def456...
+
+EJEMPLO DE RESPONSE:
+{
+  "id": 1,
+  "name": "Juan Pérez García",
+  "email": "juan.perez@email.com",
+  "roles": [
+    {
+      "id": 4,
+      "name": "paciente"
+    }
+  ]
+}
+
+================================================================================
+
+2.1.2 CERRAR SESIÓN
+================================================================================
+Endpoint: POST /api/auth/logout
+Descripción: Invalida el token actual del usuario
+Autenticación: Token Bearer requerido
+
+PARÁMETROS: Ninguno (usa token de autenticación)
+
+EJEMPLO DE REQUEST:
+POST /api/auth/logout
+Authorization: Bearer 1|abc123def456...
+
+EJEMPLO DE RESPONSE:
+{
+  "message": "Logged out"
+}
+
+================================================================================
+
+2.1.3 NOTIFICACIONES DEL USUARIO
+================================================================================
+Endpoint: GET /api/notificaciones
+Descripción: Obtiene las notificaciones del usuario autenticado
+Autenticación: Token Bearer requerido
+
+PARÁMETROS: Ninguno (usa token de autenticación)
+
+EJEMPLO DE REQUEST:
+GET /api/notificaciones
+Authorization: Bearer 1|abc123def456...
+
+EJEMPLO DE RESPONSE:
+[
+  {
+    "id": 1,
+    "mensaje": "Su cita ha sido confirmada",
+    "estado": "pendiente",
+    "created_at": "2025-09-16T10:00:00.000000Z"
+  }
+]
+
+================================================================================
+
+2.1.4 MARCAR NOTIFICACIÓN COMO LEÍDA
+================================================================================
+Endpoint: PUT /api/notificaciones/{id}/read
+Descripción: Marca una notificación como leída
+Autenticación: Token Bearer requerido
+
+PARÁMETROS URL:
+- id: integer - ID de la notificación
+
+EJEMPLO DE REQUEST:
+PUT /api/notificaciones/1/read
+Authorization: Bearer 1|abc123def456...
+
+EJEMPLO DE RESPONSE:
+{
+  "id": 1,
+  "mensaje": "Su cita ha sido confirmada",
+  "estado": "leido",
+  "created_at": "2025-09-16T10:00:00.000000Z"
+}
+
+================================================================================
+3. ENDPOINTS DE PACIENTES (Rol: paciente)
+================================================================================
+
+3.1 VER PERFIL DE PACIENTE
+================================================================================
+Endpoint: GET /api/pacientes/profile
+Descripción: Obtiene el perfil del paciente autenticado
+Autenticación: Token Bearer + Rol paciente
+
+PARÁMETROS: Ninguno
+
+EJEMPLO DE REQUEST:
+GET /api/pacientes/profile
+Authorization: Bearer 1|abc123def456...
+
+EJEMPLO DE RESPONSE:
+{
+  "id": 1,
+  "user_id": 1,
+  "documento": "1234567890",
+  "telefono": "3001234567",
+  "direccion": "Calle 123 #45-67",
+  "fecha_nacimiento": "1990-05-15",
+  "genero": "M",
+  "user": {
+    "id": 1,
+    "name": "Juan Pérez García",
+    "email": "juan.perez@email.com"
+  }
+}
+
+================================================================================
+
+3.2 ACTUALIZAR PERFIL DE PACIENTE
+================================================================================
+Endpoint: PUT /api/pacientes/profile
+Descripción: Actualiza el perfil del paciente autenticado
+Autenticación: Token Bearer + Rol paciente
+
+PARÁMETROS OPCIONALES:
+- telefono: string (50) - Número de teléfono
+- direccion: string (255) - Dirección
+- fecha_nacimiento: date - Fecha de nacimiento
+- genero: enum (M,F,O) - Género
+
+EJEMPLO DE REQUEST:
+PUT /api/pacientes/profile
+Authorization: Bearer 1|abc123def456...
+Content-Type: application/json
+
+{
+  "telefono": "3019876543",
+  "direccion": "Nueva dirección"
+}
+
+================================================================================
+
+3.3 VER CITAS DEL PACIENTE
+================================================================================
+Endpoint: GET /api/pacientes/citas
+Descripción: Obtiene las citas del paciente autenticado
+Autenticación: Token Bearer + Rol paciente
+
+PARÁMETROS: Ninguno
+
+EJEMPLO DE REQUEST:
+GET /api/pacientes/citas
+Authorization: Bearer 1|abc123def456...
+
+================================================================================
+
+3.4 VER HISTORIAL MÉDICO
+================================================================================
+Endpoint: GET /api/pacientes/historial
+Descripción: Obtiene el historial médico del paciente
+Autenticación: Token Bearer + Rol paciente
+
+PARÁMETROS: Ninguno
+
+EJEMPLO DE REQUEST:
+GET /api/pacientes/historial
+Authorization: Bearer 1|abc123def456...
+
+================================================================================
+
+3.5 VER FACTURAS DEL PACIENTE
+================================================================================
+Endpoint: GET /api/pacientes/facturas
+Descripción: Obtiene las facturas del paciente autenticado
+Autenticación: Token Bearer + Rol paciente
+
+PARÁMETROS: Ninguno
+
+EJEMPLO DE REQUEST:
+GET /api/pacientes/facturas
+Authorization: Bearer 1|abc123def456...
+
+================================================================================
+4. ENDPOINTS DE DOCTORES (Rol: doctor)
+================================================================================
+
+4.1 VER PACIENTES ASIGNADOS
+================================================================================
+Endpoint: GET /api/medicos/pacientes
+Descripción: Obtiene los pacientes asignados al doctor
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS: Ninguno
+
+================================================================================
+
+4.2 VER CITAS DEL DOCTOR
+================================================================================
+Endpoint: GET /api/medicos/citas
+Descripción: Obtiene las citas del doctor
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS: Ninguno
+
+================================================================================
+
+4.3 ACTUALIZAR ESTADO DE CITA
+================================================================================
+Endpoint: PUT /api/medicos/citas/{id}/estado
+Descripción: Actualiza el estado de una cita
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS URL:
+- id: integer - ID de la cita
+
+PARÁMETROS BODY:
+- estado: enum - Nuevo estado (pendiente, confirmada, cancelada, realizada)
+
+EJEMPLO DE REQUEST:
+PUT /api/medicos/citas/1/estado
+Authorization: Bearer 1|abc123def456...
+Content-Type: application/json
+
+{
+  "estado": "confirmada"
+}
+
+================================================================================
+
+4.4 CREAR HISTORIAL CLÍNICO
+================================================================================
+Endpoint: POST /api/medicos/historial-clinico
+Descripción: Crea un nuevo registro en el historial clínico
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS REQUERIDOS:
+- paciente_id: integer - ID del paciente
+- diagnostico: text - Diagnóstico médico
+
+PARÁMETROS OPCIONALES:
+- observaciones: text - Observaciones adicionales
+
+================================================================================
+
+4.5 CREAR TRATAMIENTO
+================================================================================
+Endpoint: POST /api/medicos/tratamientos
+Descripción: Crea un nuevo tratamiento
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS REQUERIDOS:
+- historial_id: integer - ID del historial clínico
+- descripcion: text - Descripción del tratamiento
+
+PARÁMETROS OPCIONALES:
+- fecha_inicio: date - Fecha de inicio
+- fecha_fin: date - Fecha de finalización
+
+================================================================================
+
+4.6 CREAR RECETA MÉDICA
+================================================================================
+Endpoint: POST /api/medicos/recetas-medicas
+Descripción: Crea una nueva receta médica
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS REQUERIDOS:
+- tratamiento_id: integer - ID del tratamiento
+- medicamento_id: integer - ID del medicamento
+
+PARÁMETROS OPCIONALES:
+- dosis: string (100) - Dosis del medicamento
+- frecuencia: string (100) - Frecuencia de administración
+- duracion: string (100) - Duración del tratamiento
+
+================================================================================
+
+4.7 CREAR EXAMEN
+================================================================================
+Endpoint: POST /api/medicos/examenes
+Descripción: Crea un nuevo examen médico
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS REQUERIDOS:
+- paciente_id: integer - ID del paciente
+
+PARÁMETROS OPCIONALES:
+- tipo: string (100) - Tipo de examen
+- resultado: text - Resultado del examen
+- fecha: date - Fecha del examen
+
+================================================================================
+
+4.8 VER MEDICAMENTOS
+================================================================================
+Endpoint: GET /api/medicamentos
+Descripción: Obtiene la lista de medicamentos
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS: Ninguno
+
+================================================================================
+
+4.9 BUSCAR MEDICAMENTOS
+================================================================================
+Endpoint: GET /api/medicamentos/search
+Descripción: Busca medicamentos por nombre o presentación
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS QUERY:
+- query: string - Término de búsqueda (mínimo 2 caracteres)
+
+EJEMPLO DE REQUEST:
+GET /api/medicamentos/search?query=paracetamol
+Authorization: Bearer 1|abc123def456...
+
+================================================================================
+
+4.10 VER ESPECIALIDADES
+================================================================================
+Endpoint: GET /api/especialidades
+Descripción: Obtiene la lista de especialidades médicas
+Autenticación: Token Bearer + Rol doctor
+
+PARÁMETROS: Ninguno
+
+================================================================================
+5. ENDPOINTS DE ADMINISTRADORES (Rol: admin)
+================================================================================
+
+5.1 CREAR DOCTOR
+================================================================================
+Endpoint: POST /api/admin/create-doctor
+Descripción: Crea un nuevo usuario con rol de doctor
+Autenticación: Token Bearer + Rol admin o superadmin
+
+PARÁMETROS REQUERIDOS:
+- name: string (255) - Nombre del doctor
+- email: string (255) - Email único
+- password: string (8+) - Contraseña
+
+PARÁMETROS OPCIONALES:
+- especialidad: string (100) - Especialidad médica
+- registro_profesional: string (100) - Registro profesional
+- telefono: string (50) - Teléfono
+
+EJEMPLO DE REQUEST:
+POST /api/admin/create-doctor
+Authorization: Bearer 1|abc123def456...
+Content-Type: application/json
+
+{
+  "name": "Dr. María González",
+  "email": "maria.gonzalez@hospital.com",
+  "password": "password123",
+  "especialidad": "Cardiología",
+  "registro_profesional": "123456",
+  "telefono": "3012345678"
+}
+
+================================================================================
+
+5.2 GESTIÓN COMPLETA DE PACIENTES
+================================================================================
+Endpoints: GET|POST|PUT|DELETE /api/pacientes/{id}
+Descripción: CRUD completo de pacientes
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+
+5.3 GESTIÓN COMPLETA DE CITAS
+================================================================================
+Endpoints: GET|POST|PUT|DELETE /api/citas/{id}
+Descripción: CRUD completo de citas
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+
+5.4 GESTIÓN COMPLETA DE MEDICAMENTOS
+================================================================================
+Endpoints: GET|POST|PUT|DELETE /api/medicamentos/{id}
+Descripción: CRUD completo de medicamentos
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+
+5.5 REPORTES DE CITAS
+================================================================================
+Endpoint: GET /api/admin/reportes/citas
+Descripción: Obtiene estadísticas de citas
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+
+5.6 REPORTES DE FACTURAS
+================================================================================
+Endpoint: GET /api/admin/reportes/facturas
+Descripción: Obtiene estadísticas de facturas
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+
+5.7 DASHBOARD STATS
+================================================================================
+Endpoint: GET /api/admin/dashboard/stats
+Descripción: Obtiene estadísticas generales del sistema
+Autenticación: Token Bearer + Rol admin
+
+================================================================================
+6. ENDPOINTS DE SUPERADMIN (Rol: superadmin)
+================================================================================
+
+6.1 CREAR ADMINISTRADOR
+================================================================================
+Endpoint: POST /api/admin/create-admin
+Descripción: Crea un nuevo usuario con rol de administrador
+Autenticación: Token Bearer + Rol superadmin
+
+PARÁMETROS REQUERIDOS:
+- name: string (255) - Nombre del administrador
+- email: string (255) - Email único
+- password: string (8+) - Contraseña
+
+EJEMPLO DE REQUEST:
+POST /api/admin/create-admin
+Authorization: Bearer 1|abc123def456...
+Content-Type: application/json
+
+{
+  "name": "Admin Sistema",
+  "email": "admin@sistema.com",
+  "password": "admin123"
+}
+
+================================================================================
+
+6.2 LISTAR TODOS LOS USUARIOS
+================================================================================
+Endpoint: GET /api/admin/users
+Descripción: Obtiene lista de todos los usuarios del sistema
+Autenticación: Token Bearer + Rol superadmin
+
+================================================================================
+
+6.3 ACTUALIZAR ROL DE USUARIO
+================================================================================
+Endpoint: PUT /api/admin/users/{id}/roles
+Descripción: Cambia el rol de un usuario
+Autenticación: Token Bearer + Rol superadmin
+
+PARÁMETROS BODY:
+- role: enum - Nuevo rol (paciente, doctor, admin)
+
+EJEMPLO DE REQUEST:
+PUT /api/admin/users/5/roles
+Authorization: Bearer 1|abc123def456...
+Content-Type: application/json
+
+{
+  "role": "doctor"
+}
+
+================================================================================
+
+6.4 ELIMINAR USUARIO
+================================================================================
+Endpoint: DELETE /api/admin/users/{id}
+Descripción: Elimina un usuario del sistema
+Autenticación: Token Bearer + Rol superadmin
+
+NOTA: No se pueden eliminar usuarios con rol superadmin
+
+================================================================================
+
+6.5 VER AUDITORÍAS
+================================================================================
+Endpoint: GET /api/auditorias
+Descripción: Obtiene el registro de auditorías del sistema
+Autenticación: Token Bearer + Rol superadmin
+
+================================================================================
+7. CÓDIGOS DE ERROR COMUNES
+================================================================================
+
+400 Bad Request - Datos inválidos
+401 Unauthorized - Token inválido o faltante
+403 Forbidden - Permisos insuficientes
+404 Not Found - Recurso no encontrado
+422 Unprocessable Entity - Validación fallida
+500 Internal Server Error - Error del servidor
+
+================================================================================
+8. EJEMPLOS DE USO CON CURL
+================================================================================
+
+8.1 REGISTRO DE PACIENTE:
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Juan Pérez",
+    "email": "juan@email.com",
+    "password": "password123",
+    "documento": "1234567890"
+  }'
+
+8.2 LOGIN:
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "juan@email.com",
+    "password": "password123"
+  }'
+
+8.3 CREAR DOCTOR (como admin):
+curl -X POST http://localhost:8000/api/admin/create-doctor \
+  -H "Authorization: Bearer TU_TOKEN_AQUI" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Dr. María González",
+    "email": "maria@hospital.com",
+    "password": "password123",
+    "especialidad": "Cardiología"
+  }'
+
+================================================================================
+9. NOTAS IMPORTANTES
+================================================================================
+
+- Todos los endpoints autenticados requieren header: Authorization: Bearer {token}
+- Los tokens expiran y deben refrescarse
+- Los campos marcados como únicos no pueden repetirse
+- Las fechas deben estar en formato YYYY-MM-DD
+- Los roles determinan los permisos de acceso
+- Solo superadmins pueden crear admins
+- Solo admins/superadmins pueden crear doctores
+- Los pacientes solo pueden registrarse por sí mismos
+
+================================================================================
+FIN DE LA DOCUMENTACIÓN
+================================================================================

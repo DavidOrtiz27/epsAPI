@@ -1,0 +1,150 @@
+<?php
+
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PacienteController;
+use App\Http\Controllers\MedicoController;
+use App\Http\Controllers\CitaController;
+use App\Http\Controllers\HistorialClinicoController;
+use App\Http\Controllers\TratamientoController;
+use App\Http\Controllers\MedicamentoController;
+use App\Http\Controllers\RecetaMedicaController;
+use App\Http\Controllers\ExamenController;
+use App\Http\Controllers\FacturaController;
+use App\Http\Controllers\PagoController;
+use App\Http\Controllers\EspecialidadController;
+use App\Http\Controllers\HorarioMedicoController;
+use App\Http\Controllers\NotificacionController;
+use App\Http\Controllers\AuditoriaController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+// ==========================================
+// PUBLIC ROUTES (No authentication required)
+// ==========================================
+
+// Auth routes
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
+
+// ==========================================
+// AUTHENTICATED ROUTES (Require Sanctum token)
+// ==========================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // User info
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // ==========================================
+    // PATIENT ROUTES (paciente role)
+    // ==========================================
+
+    Route::middleware('role:paciente')->group(function () {
+        // Patients can view/update their own profile
+        Route::get('/pacientes/profile', [PacienteController::class, 'profile']);
+        Route::put('/pacientes/profile', [PacienteController::class, 'updateProfile']);
+
+        // Patients can view their own appointments
+        Route::get('/pacientes/citas', [CitaController::class, 'misCitas']);
+
+        // Patients can view their own medical history
+        Route::get('/pacientes/historial', [HistorialClinicoController::class, 'miHistorial']);
+
+        // Patients can view their own invoices
+        Route::get('/pacientes/facturas', [FacturaController::class, 'misFacturas']);
+    });
+
+    // ==========================================
+    // DOCTOR ROUTES (doctor role)
+    // ==========================================
+
+    Route::middleware('role:doctor')->group(function () {
+        // Doctors can manage their patients
+        Route::get('/medicos/pacientes', [MedicoController::class, 'misPacientes']);
+        Route::get('/medicos/pacientes/{pacienteId}/historial', [HistorialClinicoController::class, 'historialPaciente']);
+
+        // Doctors can manage appointments
+        Route::get('/medicos/citas', [CitaController::class, 'misCitas']);
+        Route::put('/medicos/citas/{id}/estado', [CitaController::class, 'actualizarEstado']);
+
+        // Doctors can create medical records
+        Route::post('/medicos/historial-clinico', [HistorialClinicoController::class, 'store']);
+        Route::post('/medicos/tratamientos', [TratamientoController::class, 'store']);
+        Route::post('/medicos/recetas-medicas', [RecetaMedicaController::class, 'store']);
+        Route::post('/medicos/examenes', [ExamenController::class, 'store']);
+
+        // Doctors can view medications and specialties
+        Route::get('/medicamentos', [MedicamentoController::class, 'index']);
+        Route::get('/especialidades', [EspecialidadController::class, 'index']);
+    });
+
+    // ==========================================
+    // ADMIN ROUTES (admin role)
+    // ==========================================
+
+    Route::middleware('role:admin')->group(function () {
+        // Full CRUD for all entities
+        Route::apiResource('pacientes', PacienteController::class);
+        Route::apiResource('medicos', MedicoController::class);
+        Route::apiResource('citas', CitaController::class);
+        Route::apiResource('historial-clinico', HistorialClinicoController::class);
+        Route::apiResource('tratamientos', TratamientoController::class);
+        Route::apiResource('medicamentos', MedicamentoController::class);
+        Route::apiResource('recetas-medicas', RecetaMedicaController::class);
+        Route::apiResource('examenes', ExamenController::class);
+        Route::apiResource('facturas', FacturaController::class);
+        Route::apiResource('pagos', PagoController::class);
+        Route::apiResource('especialidades', EspecialidadController::class);
+        Route::apiResource('horarios-medicos', HorarioMedicoController::class);
+        Route::apiResource('notificaciones', NotificacionController::class);
+
+        // Admin specific routes
+        Route::get('/admin/dashboard/stats', [PacienteController::class, 'dashboardStats']);
+        Route::get('/admin/reportes/citas', [CitaController::class, 'reportes']);
+        Route::get('/admin/reportes/facturas', [FacturaController::class, 'reportes']);
+
+        // Create doctors
+        Route::post('/admin/create-doctor', [AuthController::class, 'createDoctor']);
+    });
+
+    // ==========================================
+    // SUPERADMIN ROUTES (superadmin role)
+    // ==========================================
+
+    Route::middleware('role:superadmin')->group(function () {
+        // Inherits all admin permissions plus audit logs
+        Route::apiResource('auditorias', AuditoriaController::class);
+
+        // User management
+        Route::get('/admin/users', [AuthController::class, 'listUsers']);
+        Route::put('/admin/users/{id}/roles', [AuthController::class, 'updateUserRoles']);
+        Route::delete('/admin/users/{id}', [AuthController::class, 'deleteUser']);
+
+        // Create admins
+        Route::post('/admin/create-admin', [AuthController::class, 'createAdmin']);
+    });
+
+    // ==========================================
+    // SHARED ROUTES (Multiple roles can access)
+    // ==========================================
+
+    // Any authenticated user can view their notifications
+    Route::get('/notificaciones', [NotificacionController::class, 'misNotificaciones']);
+    Route::put('/notificaciones/{id}/read', [NotificacionController::class, 'markAsRead']);
+
+    // Doctors and admins can view medications
+    Route::middleware('role:doctor,admin,superadmin')->group(function () {
+        Route::get('/medicamentos/search', [MedicamentoController::class, 'search']);
+    });
+
+    // ==========================================
+    // LEGACY/COMPATIBILITY ROUTES
+    // ==========================================
+
+    // Keep some routes for backward compatibility (will be deprecated)
+    Route::get('/pacientes/{id}/historial', [PacienteController::class, 'historial'])->middleware('role:doctor,admin,superadmin');
+    Route::get('/pacientes/{id}/citas', [PacienteController::class, 'citas'])->middleware('role:doctor,admin,superadmin');
+    Route::get('/medicos/{id}/citas', [MedicoController::class, 'citas'])->middleware('role:doctor,admin,superadmin');
+    Route::get('/medicos/{id}/pacientes', [MedicoController::class, 'pacientes'])->middleware('role:doctor,admin,superadmin');
+});

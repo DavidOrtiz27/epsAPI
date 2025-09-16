@@ -1,0 +1,667 @@
+{
+  "info": {
+    "name": "Sistema Médico Laravel API - Colección Completa",
+    "description": "Colección completa de endpoints para el sistema de gestión médica con autenticación Sanctum y roles",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. AUTENTICACIÓN",
+      "item": [
+        {
+          "name": "Registro de Paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Pérez García\",\n  \"email\": \"juan.perez@email.com\",\n  \"password\": \"password123\",\n  \"documento\": \"1234567890\",\n  \"telefono\": \"3001234567\",\n  \"direccion\": \"Calle 123 #45-67, Bogotá\",\n  \"fecha_nacimiento\": \"1990-05-15\",\n  \"genero\": \"M\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan.perez@email.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. PACIENTES",
+      "item": [
+        {
+          "name": "Ver Perfil Propio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3019876543\",\n  \"direccion\": \"Nueva dirección\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Ver Citas Propias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "citas"]
+            }
+          }
+        },
+        {
+          "name": "Ver Historial Médico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/historial",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "historial"]
+            }
+          }
+        },
+        {
+          "name": "Ver Facturas Propias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/facturas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "facturas"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. DOCTORES",
+      "item": [
+        {
+          "name": "Ver Pacientes Asignados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicos/pacientes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "pacientes"]
+            }
+          }
+        },
+        {
+          "name": "Ver Citas Propias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicos/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "citas"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Estado de Cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"confirmada\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicos/citas/1/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "citas", "1", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Crear Historial Clínico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paciente_id\": 1,\n  \"diagnostico\": \"Hipertensión arterial\",\n  \"observaciones\": \"Se recomienda control cada 3 meses\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicos/historial-clinico",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "historial-clinico"]
+            }
+          }
+        },
+        {
+          "name": "Ver Medicamentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicamentos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicamentos"]
+            }
+          }
+        },
+        {
+          "name": "Buscar Medicamentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicamentos/search?query=paracetamol",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicamentos", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "paracetamol"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ver Especialidades",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/especialidades",
+              "host": ["{{base_url}}"],
+              "path": ["api", "especialidades"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. ADMINISTRADORES - CRUD COMPLETO",
+      "item": [
+        {
+          "name": "Crear Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. María González\",\n  \"email\": \"maria.gonzalez@hospital.com\",\n  \"password\": \"password123\",\n  \"especialidad\": \"Cardiología\",\n  \"registro_profesional\": \"123456\",\n  \"telefono\": \"3012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/create-doctor",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "create-doctor"]
+            }
+          }
+        },
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard", "stats"]
+            }
+          }
+        },
+        {
+          "name": "CRUD - Pacientes",
+          "item": [
+            {
+              "name": "Listar Pacientes",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/pacientes",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "pacientes"]
+                }
+              }
+            },
+            {
+              "name": "Crear Paciente",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": 3,\n  \"documento\": \"9876543210\",\n  \"telefono\": \"3023456789\",\n  \"direccion\": \"Nueva dirección\",\n  \"fecha_nacimiento\": \"1985-03-20\",\n  \"genero\": \"F\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/pacientes",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "pacientes"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CRUD - Citas",
+          "item": [
+            {
+              "name": "Listar Citas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/citas",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "citas"]
+                }
+              }
+            },
+            {
+              "name": "Crear Cita",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"paciente_id\": 1,\n  \"medico_id\": 2,\n  \"fecha\": \"2025-09-20 10:00:00\",\n  \"estado\": \"pendiente\",\n  \"motivo\": \"Consulta general\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/citas",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "citas"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CRUD - Medicamentos",
+          "item": [
+            {
+              "name": "Listar Medicamentos",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/medicamentos",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "medicamentos"]
+                }
+              }
+            },
+            {
+              "name": "Crear Medicamento",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Paracetamol 500mg\",\n  \"presentacion\": \"Tabletas\",\n  \"dosis_recomendada\": \"1 tableta cada 8 horas\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/medicamentos",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "medicamentos"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CRUD - Especialidades",
+          "item": [
+            {
+              "name": "Listar Especialidades",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/especialidades",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "especialidades"]
+                }
+              }
+            },
+            {
+              "name": "Crear Especialidad",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Neurología\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/especialidades",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "especialidades"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. SUPERADMIN",
+      "item": [
+        {
+          "name": "Crear Administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nuevo Admin\",\n  \"email\": \"nuevo.admin@sistema.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/create-admin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "create-admin"]
+            }
+          }
+        },
+        {
+          "name": "Listar Todos los Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "Ver Auditorías",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auditorias",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auditorias"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. NOTIFICACIONES",
+      "item": [
+        {
+          "name": "Ver Mis Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notificaciones",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notificaciones"]
+            }
+          }
+        },
+        {
+          "name": "Marcar Notificación como Leída",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notificaciones/1/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notificaciones", "1", "read"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

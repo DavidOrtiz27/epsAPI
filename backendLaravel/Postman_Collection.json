@@ -1,0 +1,737 @@
+{
+  "info": {
+    "name": "Sistema Médico Laravel API",
+    "description": "Colección completa de endpoints para el sistema de gestión médica con autenticación Sanctum",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔓 Endpoints Públicos",
+      "item": [
+        {
+          "name": "Registro de Paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Pérez García\",\n  \"email\": \"juan.perez@email.com\",\n  \"password\": \"password123\",\n  \"documento\": \"1234567890\",\n  \"telefono\": \"3001234567\",\n  \"direccion\": \"Calle 123 #45-67, Bogotá\",\n  \"fecha_nacimiento\": \"1990-05-15\",\n  \"genero\": \"M\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Registra un nuevo usuario con rol de paciente. Campos requeridos: name, email, password, documento"
+          }
+        },
+        {
+          "name": "Inicio de Sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan.perez@email.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Inicia sesión y obtiene token de autenticación. Guarda el token en la variable 'token'"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.token);",
+                  "    pm.collectionVariables.set('user_id', response.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔐 Endpoints Autenticados",
+      "item": [
+        {
+          "name": "Información del Usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Obtiene información del usuario autenticado"
+          }
+        },
+        {
+          "name": "Cerrar Sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Cierra la sesión actual"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Endpoints de Pacientes",
+      "item": [
+        {
+          "name": "Ver Perfil de Paciente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "profile"]
+            },
+            "description": "Obtiene el perfil del paciente autenticado"
+          }
+        },
+        {
+          "name": "Actualizar Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3019876543\",\n  \"direccion\": \"Nueva dirección actualizada\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "profile"]
+            },
+            "description": "Actualiza el perfil del paciente autenticado"
+          }
+        },
+        {
+          "name": "Ver Citas del Paciente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "citas"]
+            },
+            "description": "Obtiene las citas del paciente autenticado"
+          }
+        },
+        {
+          "name": "Ver Historial Médico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/historial",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "historial"]
+            },
+            "description": "Obtiene el historial médico del paciente"
+          }
+        },
+        {
+          "name": "Ver Facturas del Paciente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes/facturas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes", "facturas"]
+            },
+            "description": "Obtiene las facturas del paciente autenticado"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍⚕️ Endpoints de Doctores",
+      "item": [
+        {
+          "name": "Ver Pacientes Asignados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicos/pacientes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "pacientes"]
+            },
+            "description": "Obtiene los pacientes asignados al doctor"
+          }
+        },
+        {
+          "name": "Ver Citas del Doctor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicos/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "citas"]
+            },
+            "description": "Obtiene las citas del doctor"
+          }
+        },
+        {
+          "name": "Actualizar Estado de Cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"confirmada\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicos/citas/1/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "citas", "1", "estado"]
+            },
+            "description": "Actualiza el estado de una cita específica"
+          }
+        },
+        {
+          "name": "Crear Historial Clínico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paciente_id\": 1,\n  \"diagnostico\": \"Paciente presenta síntomas de gripe\",\n  \"observaciones\": \"Recomendar reposo y medicamentos\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicos/historial-clinico",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "historial-clinico"]
+            },
+            "description": "Crea un nuevo registro en el historial clínico"
+          }
+        },
+        {
+          "name": "Crear Tratamiento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"historial_id\": 1,\n  \"descripcion\": \"Tratamiento para infección respiratoria\",\n  \"fecha_inicio\": \"2025-09-16\",\n  \"fecha_fin\": \"2025-09-23\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicos/tratamientos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicos", "tratamientos"]
+            },
+            "description": "Crea un nuevo tratamiento médico"
+          }
+        },
+        {
+          "name": "Buscar Medicamentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicamentos/search?query=paracetamol",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicamentos", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "paracetamol"
+                }
+              ]
+            },
+            "description": "Busca medicamentos por nombre o presentación"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Endpoints de Administradores",
+      "item": [
+        {
+          "name": "Crear Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. María González\",\n  \"email\": \"maria.gonzalez@hospital.com\",\n  \"password\": \"password123\",\n  \"especialidad\": \"Cardiología\",\n  \"registro_profesional\": \"123456\",\n  \"telefono\": \"3012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/create-doctor",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "create-doctor"]
+            },
+            "description": "Crea un nuevo usuario con rol de doctor"
+          }
+        },
+        {
+          "name": "Listar Todos los Pacientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pacientes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes"]
+            },
+            "description": "Obtiene lista completa de pacientes"
+          }
+        },
+        {
+          "name": "Crear Paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 2,\n  \"documento\": \"9876543210\",\n  \"telefono\": \"3009876543\",\n  \"direccion\": \"Otra dirección\",\n  \"fecha_nacimiento\": \"1985-03-20\",\n  \"genero\": \"F\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/pacientes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "pacientes"]
+            },
+            "description": "Crea un nuevo registro de paciente"
+          }
+        },
+        {
+          "name": "Listar Todas las Citas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "citas"]
+            },
+            "description": "Obtiene lista completa de citas"
+          }
+        },
+        {
+          "name": "Crear Cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paciente_id\": 1,\n  \"medico_id\": 3,\n  \"fecha\": \"2025-09-20 10:00:00\",\n  \"motivo\": \"Consulta general\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "citas"]
+            },
+            "description": "Crea una nueva cita médica"
+          }
+        },
+        {
+          "name": "Reportes de Citas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reportes/citas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "reportes", "citas"]
+            },
+            "description": "Obtiene estadísticas de citas"
+          }
+        },
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard", "stats"]
+            },
+            "description": "Obtiene estadísticas generales del sistema"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👑 Endpoints de Superadmin",
+      "item": [
+        {
+          "name": "Crear Administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin Sistema\",\n  \"email\": \"admin@sistema.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/create-admin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "create-admin"]
+            },
+            "description": "Crea un nuevo usuario con rol de administrador"
+          }
+        },
+        {
+          "name": "Listar Todos los Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"]
+            },
+            "description": "Obtiene lista de todos los usuarios del sistema"
+          }
+        },
+        {
+          "name": "Cambiar Rol de Usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"doctor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/5/roles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "5", "roles"]
+            },
+            "description": "Cambia el rol de un usuario específico"
+          }
+        },
+        {
+          "name": "Eliminar Usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "5"]
+            },
+            "description": "Elimina un usuario del sistema"
+          }
+        },
+        {
+          "name": "Ver Auditorías",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auditorias",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auditorias"]
+            },
+            "description": "Obtiene el registro de auditorías del sistema"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Endpoints CRUD Completos",
+      "item": [
+        {
+          "name": "Medicamentos - Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/medicamentos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicamentos"]
+            }
+          }
+        },
+        {
+          "name": "Medicamentos - Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Paracetamol 500mg\",\n  \"presentacion\": \"Tabletas\",\n  \"dosis_recomendada\": \"1 tableta cada 8 horas\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/medicamentos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "medicamentos"]
+            }
+          }
+        },
+        {
+          "name": "Especialidades - Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/especialidades",
+              "host": ["{{base_url}}"],
+              "path": ["api", "especialidades"]
+            }
+          }
+        },
+        {
+          "name": "Facturas - Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/facturas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "facturas"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set base URL if not set",
+          "if (!pm.environment.get('base_url')) {",
+          "    pm.environment.set('base_url', 'http://localhost:8000');",
+          "}"
+        ]
+      }
+    }
+  ]
+}
