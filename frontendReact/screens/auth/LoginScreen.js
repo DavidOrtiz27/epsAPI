@@ -8,6 +8,7 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +50,7 @@ const LoginScreen = () => {
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password);3
       // Navigation will be handled automatically by AuthContext
     } catch (error) {
       console.error('Login error:', error);
@@ -73,9 +74,9 @@ const LoginScreen = () => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="medical" size={80} color="#007AFF" />
+              <Image source={require('../../assets/mapu.png')} style={{ width: 120, height: 120, borderRadius: 40 }} />
             </View>
-            <Text style={styles.title}>EPS Manager</Text>
+            <Text style={styles.title}>EPS Mapu</Text>
             <Text style={styles.subtitle}>Sistema de Gestión Médica</Text>
           </View>
 

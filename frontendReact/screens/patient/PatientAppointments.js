@@ -6,19 +6,24 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiService from '../../services/api/api';
 
 const PatientAppointments = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAppointments();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAppointments();
+    }, [])
+  );
 
   const loadAppointments = async () => {
     try {
@@ -31,47 +36,91 @@ const PatientAppointments = () => {
     }
   };
 
-  const AppointmentCard = ({ appointment }) => (
-    <View style={styles.appointmentCard}>
-      <View style={styles.appointmentHeader}>
-        <Text style={styles.appointmentDate}>
-          {new Date(appointment.fecha).toLocaleDateString('es-ES', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+  const handleCancelAppointment = async (appointmentId) => {
+    Alert.alert(
+      'Cancelar Cita',
+      '¿Estás seguro de que quieres cancelar esta cita?',
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiService.cancelAppointment(appointmentId);
+              Alert.alert('Éxito', 'Cita cancelada exitosamente');
+              loadAppointments(); // Refresh the list
+            } catch (error) {
+              console.error('Error canceling appointment:', error);
+              Alert.alert('Error', 'No se pudo cancelar la cita. Intente nuevamente.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const AppointmentCard = ({ appointment, showCancelButton = false, onCancel }) => {
+    const isUpcoming = new Date(appointment.fecha) >= new Date();
+    const isNotCancelled = appointment.estado?.toLowerCase() !== 'cancelada';
+
+    return (
+      <View style={styles.appointmentCard}>
+        <View style={styles.appointmentHeader}>
+          <Text style={styles.appointmentDate}>
+            {new Date(appointment.fecha).toLocaleDateString('es-ES', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
+          <View style={[styles.statusBadge, getStatusStyle(appointment.estado)]}>
+            <Text style={styles.statusText}>{getStatusText(appointment.estado)}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.appointmentTime}>
+          {new Date(appointment.fecha).toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
           })}
         </Text>
-        <View style={[styles.statusBadge, getStatusStyle(appointment.estado)]}>
-          <Text style={styles.statusText}>{getStatusText(appointment.estado)}</Text>
-        </View>
-      </View>
 
-      <Text style={styles.appointmentTime}>
-        {new Date(appointment.fecha).toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </Text>
+        <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
 
-      <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
+        {appointment.medico && (
+          <View style={styles.doctorInfo}>
+            <Ionicons name="medical" size={16} color="#666" />
+            <Text style={styles.doctorName}>
+              Dr. {appointment.medico.user?.name || 'Médico asignado'}
+            </Text>
+          </View>
+        )}
 
-      {appointment.medico && (
-        <View style={styles.doctorInfo}>
-          <Ionicons name="medical" size={16} color="#666" />
-          <Text style={styles.doctorName}>
-            Dr. {appointment.medico.user?.name || 'Médico asignado'}
+        {appointment.medico?.especialidad && (
+          <Text style={styles.specialty}>
+            Especialidad: {appointment.medico.especialidad.nombre || 'General'}
           </Text>
-        </View>
-      )}
+        )}
 
-      {appointment.medico?.especialidad && (
-        <Text style={styles.specialty}>
-          Especialidad: {appointment.medico.especialidad.nombre || 'General'}
-        </Text>
-      )}
-    </View>
-  );
+        {showCancelButton && isUpcoming && isNotCancelled && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => onCancel(appointment.id)}
+            >
+              <Ionicons name="close-circle" size={20} color="#FF3B30" />
+              <Text style={styles.cancelButtonText}>Cancelar Cita</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const getStatusStyle = (status) => {
     switch (status?.toLowerCase()) {
@@ -126,7 +175,12 @@ const PatientAppointments = () => {
           <Text style={styles.sectionTitle}>Próximas Citas ({upcomingAppointments.length})</Text>
           {upcomingAppointments.length > 0 ? (
             upcomingAppointments.map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard
+                key={appointment.id}
+                appointment={appointment}
+                showCancelButton={true}
+                onCancel={handleCancelAppointment}
+              />
             ))
           ) : (
             <View style={styles.emptyState}>
@@ -289,6 +343,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  actionButtons: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF5F5',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  cancelButtonText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 

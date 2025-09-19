@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
@@ -23,10 +24,25 @@ const PatientProfile = () => {
   const [formData, setFormData] = useState({
     telefono: '',
     direccion: '',
-    fecha_nacimiento: '',
-    genero: '',
   });
   const [errors, setErrors] = useState({});
+
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    try {
+      // If it's already in YYYY-MM-DD format, try to parse and format it
+      if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const date = new Date(dateString + 'T00:00:00');
+        return date.toLocaleDateString('es-ES');
+      }
+      // Otherwise, try to parse as Date object
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString; // Return as-is if can't parse
+      return date.toLocaleDateString('es-ES');
+    } catch (error) {
+      return dateString; // Return as-is if error
+    }
+  };
 
   useEffect(() => {
     loadProfile();
@@ -36,15 +52,14 @@ const PatientProfile = () => {
     try {
       const profileData = await apiService.getPatientProfile();
       setProfile(profileData);
+      // Initialize form data with only editable fields
       setFormData({
-        telefono: profileData.telefono || '',
-        direccion: profileData.direccion || '',
-        fecha_nacimiento: profileData.fecha_nacimiento || '',
-        genero: profileData.genero || '',
+        telefono: profileData?.telefono || '',
+        direccion: profileData?.direccion || '',
       });
     } catch (error) {
       console.error('Error loading profile:', error);
-      Alert.alert('Error', 'No se pudo cargar el perfil');
+      Alert.alert('Error', 'No se pudo cargar el perfil. Intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -60,12 +75,9 @@ const PatientProfile = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (formData.fecha_nacimiento && !/^\d{4}-\d{2}-\d{2}$/.test(formData.fecha_nacimiento)) {
-      newErrors.fecha_nacimiento = 'Formato de fecha: YYYY-MM-DD';
-    }
-
-    if (formData.genero && !['M', 'F', 'O'].includes(formData.genero.toUpperCase())) {
-      newErrors.genero = 'Género debe ser M, F u O';
+    // Only validate editable fields
+    if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
+      newErrors.telefono = 'Formato de teléfono inválido';
     }
 
     setErrors(newErrors);
@@ -77,10 +89,7 @@ const PatientProfile = () => {
 
     setSaving(true);
     try {
-      const updateData = {
-        ...formData,
-        genero: formData.genero ? formData.genero.toUpperCase() : undefined,
-      };
+      const updateData = { ...formData };
 
       // Remove empty fields
       Object.keys(updateData).forEach(key => {
@@ -89,26 +98,28 @@ const PatientProfile = () => {
         }
       });
 
+      console.log('Sending update data:', updateData); // Debug log
+
       await apiService.updatePatientProfile(updateData);
       await loadProfile(); // Reload profile data
       setEditing(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'No se pudo actualizar el perfil');
+      Alert.alert('Error', 'No se pudo actualizar el perfil. Verifica los datos e intenta nuevamente.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    // Reset form data to original values
-    setFormData({
-      telefono: profile?.telefono || '',
-      direccion: profile?.direccion || '',
-      fecha_nacimiento: profile?.fecha_nacimiento || '',
-      genero: profile?.genero || '',
-    });
+    // Reset form data to original values (only editable fields)
+    if (profile) {
+      setFormData({
+        telefono: profile.telefono || '',
+        direccion: profile.direccion || '',
+      });
+    }
     setErrors({});
     setEditing(false);
   };
@@ -121,13 +132,17 @@ const PatientProfile = () => {
       </View>
       {editing && editable ? (
         <View style={styles.editContainer}>
-          <CustomInput
+          <TextInput
+            style={[styles.editInput, errors[field] && styles.editInputError]}
             value={formData[field]}
             onChangeText={(value) => updateFormData(field, value)}
             placeholder={`Ingresa ${label.toLowerCase()}`}
-            error={errors[field]}
-            style={styles.editInput}
+            keyboardType={field === 'telefono' ? 'phone-pad' : 'default'}
+            autoCapitalize={field === 'direccion' ? 'words' : 'none'}
           />
+          {errors[field] && (
+            <Text style={styles.errorText}>{errors[field]}</Text>
+          )}
         </View>
       ) : (
         <Text style={styles.profileItemValue}>
@@ -136,6 +151,17 @@ const PatientProfile = () => {
       )}
     </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="person" size={48} color="#007AFF" />
+          <Text style={styles.loadingText}>Cargando perfil...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -153,11 +179,15 @@ const PatientProfile = () => {
               </TouchableOpacity>
             ) : (
               <View style={styles.editActions}>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
                   <Ionicons name="close" size={20} color="#666" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                  <Ionicons name="checkmark" size={20} color="#34C759" />
+                <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
+                  {saving ? (
+                    <Ionicons name="hourglass" size={20} color="#34C759" />
+                  ) : (
+                    <Ionicons name="checkmark" size={20} color="#34C759" />
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -203,16 +233,12 @@ const PatientProfile = () => {
             <ProfileItem
               icon="calendar-outline"
               label="Fecha de nacimiento"
-              value={profile?.fecha_nacimiento ? new Date(profile.fecha_nacimiento).toLocaleDateString('es-ES') : null}
-              editable={true}
-              field="fecha_nacimiento"
+              value={profile?.fecha_nacimiento ? formatDate(profile.fecha_nacimiento) : null}
             />
             <ProfileItem
               icon="male-female-outline"
               label="Género"
               value={profile?.genero === 'M' ? 'Masculino' : profile?.genero === 'F' ? 'Femenino' : profile?.genero === 'O' ? 'Otro' : null}
-              editable={true}
-              field="genero"
             />
           </View>
         </View>
@@ -243,6 +269,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
+    marginTop: 16,
   },
   scrollView: {
     flex: 1,
@@ -372,7 +409,23 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   editInput: {
-    marginBottom: 0,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#fff',
+    marginBottom: 4,
+  },
+  editInputError: {
+    borderColor: '#ff3b30',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ff3b30',
+    marginBottom: 8,
   },
   accountSection: {
     paddingHorizontal: 24,

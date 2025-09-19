@@ -47,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Patients can view their own appointments
         Route::get('/pacientes/citas', [CitaController::class, 'misCitas']);
+        Route::post('/pacientes/citas', [CitaController::class, 'store']);
+        Route::post('/pacientes/citas/{id}/cancelar', [CitaController::class, 'cancelarCita']);
 
         // Patients can view their own medical history
         Route::get('/pacientes/historial', [HistorialClinicoController::class, 'miHistorial']);
@@ -67,6 +69,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Doctors can manage appointments
         Route::get('/medicos/citas', [CitaController::class, 'misCitas']);
         Route::put('/medicos/citas/{id}/estado', [CitaController::class, 'actualizarEstado']);
+        Route::post('/citas', [CitaController::class, 'store']);
+        Route::get('/citas', [CitaController::class, 'index']);
+        Route::get('/citas/{id}', [CitaController::class, 'show']);
+        Route::put('/citas/{id}', [CitaController::class, 'update']);
+        Route::delete('/citas/{id}', [CitaController::class, 'destroy']);
 
         // Doctors can create medical records
         Route::post('/medicos/historial-clinico', [HistorialClinicoController::class, 'store']);
@@ -74,9 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/medicos/recetas-medicas', [RecetaMedicaController::class, 'store']);
         Route::post('/medicos/examenes', [ExamenController::class, 'store']);
 
-        // Doctors can view medications and specialties
+        // Doctors can view medications
         Route::get('/medicamentos', [MedicamentoController::class, 'index']);
-        Route::get('/especialidades', [EspecialidadController::class, 'index']);
     });
 
     // ==========================================
@@ -87,7 +93,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Full CRUD for all entities
         Route::apiResource('pacientes', PacienteController::class);
         Route::apiResource('medicos', MedicoController::class);
-        Route::apiResource('citas', CitaController::class);
         Route::apiResource('historial-clinico', HistorialClinicoController::class);
         Route::apiResource('tratamientos', TratamientoController::class);
         Route::apiResource('medicamentos', MedicamentoController::class);
@@ -132,6 +137,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Any authenticated user can view their notifications
     Route::get('/notificaciones', [NotificacionController::class, 'misNotificaciones']);
     Route::put('/notificaciones/{id}/read', [NotificacionController::class, 'markAsRead']);
+
+    // Any authenticated user can view specialties and doctors
+    Route::get('/especialidades', [EspecialidadController::class, 'index']);
+    Route::get('/medicos', [MedicoController::class, 'index']);
 
     // Doctors and admins can view medications
     Route::middleware('role:doctor,admin,superadmin')->group(function () {

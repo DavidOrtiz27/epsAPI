@@ -217,6 +217,37 @@ class CitaController extends Controller
     }
 
     /**
+     * Cancel appointment (for patients)
+     */
+    public function cancelarCita(Request $request, string $id)
+    {
+        $cita = Cita::findOrFail($id);
+        $user = $request->user();
+
+        // Check if user is a patient and owns this appointment
+        if (!$user->hasRole('paciente') || !$user->paciente || $user->paciente->id != $cita->paciente_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Check if appointment can be cancelled (not already cancelled or completed)
+        if ($cita->estado === 'cancelada') {
+            return response()->json(['message' => 'La cita ya está cancelada'], 400);
+        }
+
+        if ($cita->estado === 'realizada') {
+            return response()->json(['message' => 'No se puede cancelar una cita ya realizada'], 400);
+        }
+
+        // Update appointment status
+        $cita->update(['estado' => 'cancelada']);
+
+        return response()->json([
+            'message' => 'Cita cancelada exitosamente',
+            'cita' => $cita->load(['paciente.user', 'medico.user'])
+        ]);
+    }
+
+    /**
      * Get appointment reports (for admins)
      */
     public function reportes(Request $request)

@@ -54,6 +54,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('API Token')->plainTextToken;
 
+        // Load paciente relationship for the new patient
+        $user->load('paciente');
+
         return response()->json([
             'user' => $user->load('roles'),
             'token' => $token,
@@ -77,6 +80,11 @@ class AuthController extends Controller
 
         $user = Auth::user();
         $token = $user->createToken('API Token')->plainTextToken;
+
+        // Load paciente relationship for patients
+        if ($user->hasRole('paciente')) {
+            $user->load('paciente');
+        }
 
         return response()->json([
             'user' => $user->load('roles'),

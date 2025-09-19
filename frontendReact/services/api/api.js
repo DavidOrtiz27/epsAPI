@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_BASE_URL = 'http://192.168.1.8:8000/api';
+//const API_BASE_URL = 'http://10.2.234.14:8001/api';
+const API_BASE_URL = 'http://192.168.122.1:8000/api';
+//const API_BASE_URL = 'http://192.168.1.8:8000/api';
 
 class ApiService {
   constructor() {
@@ -186,6 +187,23 @@ class ApiService {
 
   async getSpecialties() {
     return await this.request('/especialidades');
+  }
+
+  async getDoctors() {
+    return await this.request('/medicos');
+  }
+
+  async createAppointment(appointmentData) {
+    return await this.request('/pacientes/citas', {
+      method: 'POST',
+      body: JSON.stringify(appointmentData),
+    });
+  }
+
+  async cancelAppointment(appointmentId) {
+    return await this.request(`/pacientes/citas/${appointmentId}/cancelar`, {
+      method: 'POST',
+    });
   }
 
   // Notifications

@@ -180,7 +180,7 @@ const RegisterScreen = () => {
               />
 
               <CustomInput
-                label="Teléfono (opcional)"
+                label="Teléfono"
                 value={formData.telefono}
                 onChangeText={(value) => updateFormData('telefono', value)}
                 placeholder="3001234567"
@@ -190,7 +190,7 @@ const RegisterScreen = () => {
               />
 
               <CustomInput
-                label="Dirección (opcional)"
+                label="Dirección"
                 value={formData.direccion}
                 onChangeText={(value) => updateFormData('direccion', value)}
                 placeholder="Calle 123 #45-67, Ciudad"
@@ -199,7 +199,7 @@ const RegisterScreen = () => {
               />
 
               <CustomInput
-                label="Fecha de nacimiento (opcional)"
+                label="Fecha de nacimiento"
                 value={formData.fecha_nacimiento}
                 onChangeText={(value) => updateFormData('fecha_nacimiento', value)}
                 placeholder="YYYY-MM-DD"
@@ -208,7 +208,7 @@ const RegisterScreen = () => {
               />
 
               <CustomInput
-                label="Género (opcional)"
+                label="Género"
                 value={formData.genero}
                 onChangeText={(value) => updateFormData('genero', value)}
                 placeholder="M (Masculino), F (Femenino), O (Otro)"
