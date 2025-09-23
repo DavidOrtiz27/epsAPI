@@ -12,13 +12,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState({
     totalPacientes: 0,
     totalDoctores: 0,
     totalCitas: 0,
     citasPendientes: 0,
+    citasConfirmadas: 0,
+    citasRealizadas: 0,
+    citasCanceladas: 0,
+    citasHoy: 0,
+    citasSemana: 0,
+    citasMes: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -28,17 +34,55 @@ const AdminDashboard = () => {
 
   const loadDashboardStats = async () => {
     try {
-      // For now, we'll use placeholder data since the admin stats endpoint might not be implemented
-      // In a real implementation, this would call: await apiService.getAdminStats();
-      setStats({
-        totalPacientes: 25,
-        totalDoctores: 8,
-        totalCitas: 45,
-        citasPendientes: 12,
-      });
+      const dashboardData = await apiService.getAdminDashboard();
+
+      // Extract the basic statistics from the API response
+      const estadisticasBasicas = dashboardData.estadisticas_basicas;
+      const estadisticasTiempo = dashboardData.estadisticas_tiempo;
+
+      if (estadisticasBasicas && estadisticasTiempo) {
+        setStats({
+          totalPacientes: estadisticasBasicas.total_pacientes || 0,
+          totalDoctores: estadisticasBasicas.total_doctores || 0,
+          totalCitas: estadisticasBasicas.total_citas || 0,
+          citasPendientes: estadisticasBasicas.citas_pendientes || 0,
+          citasConfirmadas: estadisticasBasicas.citas_confirmadas || 0,
+          citasRealizadas: estadisticasBasicas.citas_realizadas || 0,
+          citasCanceladas: estadisticasBasicas.citas_canceladas || 0,
+          citasHoy: estadisticasTiempo.citas_hoy || 0,
+          citasSemana: estadisticasTiempo.citas_semana || 0,
+          citasMes: estadisticasTiempo.citas_mes || 0,
+        });
+      } else {
+        throw new Error('Invalid API response structure');
+      }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
-      Alert.alert('Error', 'No se pudieron cargar las estadísticas');
+      console.error('Error details:', error.message, error.status);
+
+      // Check if it's an authentication error
+      if (error.status === 401 || error.message?.includes('Sesión expirada')) {
+        Alert.alert(
+          'Acceso Denegado',
+          'No tienes permisos de administrador para ver estas estadísticas. Contacta al administrador del sistema.',
+          [{ text: 'OK', onPress: () => logout() }]
+        );
+      } else {
+        // Fallback to placeholder data if API fails
+        setStats({
+          totalPacientes: 0,
+          totalDoctores: 0,
+          totalCitas: 0,
+          citasPendientes: 0,
+          citasConfirmadas: 0,
+          citasRealizadas: 0,
+          citasCanceladas: 0,
+          citasHoy: 0,
+          citasSemana: 0,
+          citasMes: 0,
+        });
+        Alert.alert('Error', 'No se pudieron cargar las estadísticas del servidor. Mostrando datos de demostración.');
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +107,45 @@ const AdminDashboard = () => {
     </TouchableOpacity>
   );
 
-  const handleQuickAction = (action) => {
-    Alert.alert('Funcionalidad en desarrollo', `La acción "${action}" estará disponible próximamente.`);
+  const handleQuickAction = async (action) => {
+    switch (action) {
+      case 'Gestionar Pacientes':
+        navigation.navigate('AdminPatients');
+        break;
+      case 'Gestionar Doctores':
+        navigation.navigate('AdminDoctors');
+        break;
+      case 'Ver Citas':
+        Alert.alert('Ver Citas', 'Funcionalidad disponible en el menú de administración completo.');
+        break;
+      case 'Reportes':
+        Alert.alert(
+          'Reportes del Sistema',
+          `Sistema Médico - Estadísticas Actuales:\n\n` +
+          `📊 Total de Citas: ${stats.totalCitas}\n` +
+          `👥 Total de Pacientes: ${stats.totalPacientes}\n` +
+          `🏥 Total de Doctores: ${stats.totalDoctores}\n` +
+          `📅 Citas Hoy: ${stats.citasHoy}\n` +
+          `⏳ Citas Pendientes: ${stats.citasPendientes}\n` +
+          `✅ Citas Realizadas: ${stats.citasRealizadas}\n\n` +
+          `Los reportes detallados estarán disponibles próximamente.`,
+          [{ text: 'OK' }]
+        );
+        break;
+      case 'Medicamentos':
+        Alert.alert('Medicamentos', 'Funcionalidad disponible en el menú de administración completo.');
+        break;
+      case 'Configuración':
+        Alert.alert('Configuración', 'Funcionalidad disponible en el menú de administración completo.');
+        break;
+      default:
+        Alert.alert('Funcionalidad en desarrollo', `La acción "${action}" estará disponible próximamente.`);
+    }
+  };
+
+  const handleRefresh = () => {
+    setLoading(true);
+    loadDashboardStats();
   };
 
   return (
@@ -76,9 +157,14 @@ const AdminDashboard = () => {
             <Text style={styles.welcomeText}>Panel Administrativo</Text>
             <Text style={styles.userName}>{user?.name || 'Administrador'}</Text>
           </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#666" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+              <Ionicons name="refresh-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats Grid */}
@@ -104,10 +190,38 @@ const AdminDashboard = () => {
               color="#FF9500"
             />
             <StatCard
+              title="Citas Hoy"
+              value={stats.citasHoy}
+              icon="today-outline"
+              color="#5856D6"
+            />
+          </View>
+
+          {/* Additional Stats Row */}
+          <View style={[styles.statsGrid, { marginTop: 12 }]}>
+            <StatCard
               title="Citas Pendientes"
               value={stats.citasPendientes}
               icon="time-outline"
               color="#FF3B30"
+            />
+            <StatCard
+              title="Citas Confirmadas"
+              value={stats.citasConfirmadas}
+              icon="checkmark-circle-outline"
+              color="#34C759"
+            />
+            <StatCard
+              title="Citas Realizadas"
+              value={stats.citasRealizadas}
+              icon="checkmark-done-circle-outline"
+              color="#007AFF"
+            />
+            <StatCard
+              title="Citas Canceladas"
+              value={stats.citasCanceladas}
+              icon="close-circle-outline"
+              color="#8E8E93"
             />
           </View>
         </View>
@@ -217,6 +331,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    padding: 8,
+    marginRight: 8,
+  },
   logoutButton: {
     padding: 8,
   },
@@ -231,23 +353,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   statCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    flex: 1,
+    minWidth: '48%', // Slightly larger for better mobile display
+    marginBottom: 8,
   },
   statIcon: {
     marginRight: 16,
@@ -256,14 +383,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
   },
   statTitle: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2,
+    marginTop: 4,
+    fontWeight: '500',
   },
   actionsSection: {
     paddingHorizontal: 24,

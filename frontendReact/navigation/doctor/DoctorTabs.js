@@ -1,17 +1,23 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import doctor screens
 import {
   DoctorAppointments,
   DoctorPatients,
-  DoctorProfile
+  DoctorProfile,
+  DoctorSchedule,
+  DoctorAppointmentDetail,
+  DoctorReports,
+  DoctorHelp
 } from '../../screens/doctor';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-const DoctorTabs = () => {
+const TabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -22,6 +28,8 @@ const DoctorTabs = () => {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Pacientes') {
             iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Horarios') {
+            iconName = focused ? 'time' : 'time-outline';
           } else if (route.name === 'Perfil') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -51,24 +59,79 @@ const DoctorTabs = () => {
         name="Citas"
         component={DoctorAppointments}
         options={{
-          title: 'Mis Citas',
+          title: 'Citas',
         }}
       />
       <Tab.Screen
         name="Pacientes"
         component={DoctorPatients}
         options={{
-          title: 'Mis Pacientes',
+          title: 'Pacientes',
+        }}
+      />
+      <Tab.Screen
+        name="Horarios"
+        component={DoctorSchedule}
+        options={{
+          title: 'Horarios',
         }}
       />
       <Tab.Screen
         name="Perfil"
         component={DoctorProfile}
         options={{
-          title: 'Mi Perfil',
+          title: 'Perfil',
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const DoctorTabs = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#007AFF',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Stack.Screen
+        name="DoctorTabNavigator"
+        component={TabNavigator}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="DoctorAppointmentDetail"
+        component={DoctorAppointmentDetail}
+        options={{
+          title: 'Consulta Médica',
+          headerLeft: null,
+        }}
+      />
+      <Stack.Screen
+        name="DoctorReports"
+        component={DoctorReports}
+        options={{
+          title: 'Reportes Médicos',
+          headerLeft: null,
+        }}
+      />
+      <Stack.Screen
+        name="DoctorHelp"
+        component={DoctorHelp}
+        options={{
+          title: 'Centro de Ayuda',
+          headerLeft: null,
+        }}
+      />
+    </Stack.Navigator>
   );
 };
 

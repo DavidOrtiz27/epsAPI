@@ -7,16 +7,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import apiService from '../../services/api/api';
 import CustomButton from '../../components/ui/CustomButton';
 
 const DoctorAppointments = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pendientes'); // 'pendientes', 'confirmadas', 'historial'
 
   useEffect(() => {
     loadAppointments();
@@ -66,8 +70,12 @@ const DoctorAppointments = () => {
   const AppointmentCard = ({ appointment }) => {
     const canChangeStatus = appointment.estado?.toLowerCase() === 'pendiente';
 
+    const handlePress = () => {
+      navigation.navigate('DoctorAppointmentDetail', { appointmentId: appointment.id });
+    };
+
     return (
-      <View style={styles.appointmentCard}>
+      <TouchableOpacity style={styles.appointmentCard} onPress={handlePress}>
         <View style={styles.appointmentHeader}>
           <Text style={styles.appointmentDate}>
             {new Date(appointment.fecha).toLocaleDateString('es-ES', {
@@ -122,7 +130,7 @@ const DoctorAppointments = () => {
             />
           </View>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -164,61 +172,113 @@ const DoctorAppointments = () => {
     apt.estado?.toLowerCase() === 'realizada'
   );
 
+  const getFilteredAppointments = () => {
+    switch (activeTab) {
+      case 'pendientes':
+        return pendingAppointments;
+      case 'confirmadas':
+        return confirmedAppointments;
+      case 'historial':
+        return completedAppointments;
+      default:
+        return pendingAppointments;
+    }
+  };
+
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'pendientes':
+        return `Citas Pendientes (${pendingAppointments.length})`;
+      case 'confirmadas':
+        return `Citas Confirmadas (${confirmedAppointments.length})`;
+      case 'historial':
+        return `Historial de Citas (${completedAppointments.length})`;
+      default:
+        return 'Citas';
+    }
+  };
+
+  const getEmptyStateIcon = () => {
+    switch (activeTab) {
+      case 'pendientes':
+        return 'time-outline';
+      case 'confirmadas':
+        return 'checkmark-circle-outline';
+      case 'historial':
+        return 'document-text-outline';
+      default:
+        return 'time-outline';
+    }
+  };
+
+  const getEmptyStateText = () => {
+    switch (activeTab) {
+      case 'pendientes':
+        return 'No hay citas pendientes';
+      case 'confirmadas':
+        return 'No hay citas confirmadas';
+      case 'historial':
+        return 'No hay citas completadas';
+      default:
+        return 'No hay citas';
+    }
+  };
+
+  const filteredAppointments = getFilteredAppointments();
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>Dr. {user?.name || 'Médico'}</Text>
+          <Text style={styles.subtitle}>Panel de Citas</Text>
+        </View>
+        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={24} color="#666" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Top Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'pendientes' && styles.activeTab]}
+          onPress={() => setActiveTab('pendientes')}
+        >
+          <Text style={[styles.tabText, activeTab === 'pendientes' && styles.activeTabText]}>
+            Pendientes ({pendingAppointments.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'confirmadas' && styles.activeTab]}
+          onPress={() => setActiveTab('confirmadas')}
+        >
+          <Text style={[styles.tabText, activeTab === 'confirmadas' && styles.activeTabText]}>
+            Confirmadas ({confirmedAppointments.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'historial' && styles.activeTab]}
+          onPress={() => setActiveTab('historial')}
+        >
+          <Text style={[styles.tabText, activeTab === 'historial' && styles.activeTabText]}>
+            Historial ({completedAppointments.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Appointments List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeText}>Dr. {user?.name || 'Médico'}</Text>
-            <Text style={styles.subtitle}>Panel de Citas</Text>
-          </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Pending Appointments */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Citas Pendientes ({pendingAppointments.length})</Text>
-          {pendingAppointments.length > 0 ? (
-            pendingAppointments.map((appointment) => (
+          <Text style={styles.sectionTitle}>{getTabTitle()}</Text>
+          {filteredAppointments.length > 0 ? (
+            filteredAppointments.map((appointment) => (
               <AppointmentCard key={appointment.id} appointment={appointment} />
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No hay citas pendientes</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Confirmed Appointments */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Citas Confirmadas ({confirmedAppointments.length})</Text>
-          {confirmedAppointments.length > 0 ? (
-            confirmedAppointments.map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="checkmark-circle-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No hay citas confirmadas</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Completed Appointments */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Historial de Citas ({completedAppointments.length})</Text>
-          {completedAppointments.length > 0 ? (
-            completedAppointments.slice(0, 5).map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="document-text-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No hay citas completadas</Text>
+              <Ionicons name={getEmptyStateIcon()} size={48} color="#ccc" />
+              <Text style={styles.emptyStateText}>{getEmptyStateText()}</Text>
             </View>
           )}
         </View>
@@ -360,6 +420,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-});
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#007AFF',
+  },
+ });
 
 export default DoctorAppointments;

@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
@@ -18,6 +19,7 @@ const PatientAppointments = () => {
   const navigation = useNavigation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('proximas'); // 'proximas', 'historial'
 
   useFocusEffect(
     React.useCallback(() => {
@@ -156,54 +158,127 @@ const PatientAppointments = () => {
     new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
   );
 
+  const getFilteredAppointments = () => {
+    switch (activeTab) {
+      case 'proximas':
+        return upcomingAppointments;
+      case 'historial':
+        return pastAppointments;
+      default:
+        return upcomingAppointments;
+    }
+  };
+
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'proximas':
+        return `Próximas Citas (${upcomingAppointments.length})`;
+      case 'historial':
+        return `Historial de Citas (${pastAppointments.length})`;
+      default:
+        return 'Citas';
+    }
+  };
+
+  const getEmptyStateIcon = () => {
+    switch (activeTab) {
+      case 'proximas':
+        return 'calendar-outline';
+      case 'historial':
+        return 'time-outline';
+      default:
+        return 'calendar-outline';
+    }
+  };
+
+  const getEmptyStateText = () => {
+    switch (activeTab) {
+      case 'proximas':
+        return 'No tienes citas próximas';
+      case 'historial':
+        return 'No hay citas anteriores';
+      default:
+        return 'No hay citas';
+    }
+  };
+
+  const getEmptyStateSubtext = () => {
+    switch (activeTab) {
+      case 'proximas':
+        return 'Contacta con tu médico para agendar una cita';
+      case 'historial':
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const filteredAppointments = getFilteredAppointments();
+  const showCancelButton = activeTab === 'proximas';
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeText}>{user?.name || 'Paciente'}</Text>
-            <Text style={styles.subtitle}>Mis Citas</Text>
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>{user?.name || 'Paciente'}</Text>
+          <Text style={styles.subtitle}>Mis Citas</Text>
+        </View>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('PatientBookAppointment')}
+            style={styles.addButton}
+          >
+            <Ionicons name="add" size={24} color="#007AFF" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={logout} style={styles.logoutButton}>
             <Ionicons name="log-out-outline" size={24} color="#666" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Upcoming Appointments */}
+      {/* Top Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'proximas' && styles.activeTab]}
+          onPress={() => setActiveTab('proximas')}
+        >
+          <Text style={[styles.tabText, activeTab === 'proximas' && styles.activeTabText]}>
+            Próximas ({upcomingAppointments.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'historial' && styles.activeTab]}
+          onPress={() => setActiveTab('historial')}
+        >
+          <Text style={[styles.tabText, activeTab === 'historial' && styles.activeTabText]}>
+            Historial ({pastAppointments.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Appointments List */}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Próximas Citas ({upcomingAppointments.length})</Text>
-          {upcomingAppointments.length > 0 ? (
-            upcomingAppointments.map((appointment) => (
+          <Text style={styles.sectionTitle}>{getTabTitle()}</Text>
+          {filteredAppointments.length > 0 ? (
+            filteredAppointments.map((appointment) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
-                showCancelButton={true}
+                showCancelButton={showCancelButton}
                 onCancel={handleCancelAppointment}
               />
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No tienes citas próximas</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Contacta con tu médico para agendar una cita
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Past Appointments */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Historial de Citas ({pastAppointments.length})</Text>
-          {pastAppointments.length > 0 ? (
-            pastAppointments.slice(0, 10).map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No hay citas anteriores</Text>
+              <Ionicons name={getEmptyStateIcon()} size={48} color="#ccc" />
+              <Text style={styles.emptyStateText}>{getEmptyStateText()}</Text>
+              {getEmptyStateSubtext() && (
+                <Text style={styles.emptyStateSubtext}>
+                  {getEmptyStateSubtext()}
+                </Text>
+              )}
             </View>
           )}
         </View>
@@ -241,6 +316,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButton: {
+    padding: 8,
+    marginRight: 8,
   },
   logoutButton: {
     padding: 8,
@@ -366,6 +449,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 6,
   },
-});
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#007AFF',
+  },
+ });
 
 export default PatientAppointments;

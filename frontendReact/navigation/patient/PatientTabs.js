@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import patient screens
@@ -7,10 +8,43 @@ import {
   PatientDashboard,
   PatientAppointments,
   PatientHistory,
-  PatientProfile
+  PatientProfile,
+  PatientBookAppointment
 } from '../../screens/patient';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+const AppointmentsStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#007AFF',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Stack.Screen
+        name="PatientAppointments"
+        component={PatientAppointments}
+        options={{
+          title: 'Mis Citas',
+        }}
+      />
+      <Stack.Screen
+        name="PatientBookAppointment"
+        component={PatientBookAppointment}
+        options={{
+          title: 'Agendar Cita',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const PatientTabs = () => {
   return (
@@ -59,9 +93,10 @@ const PatientTabs = () => {
       />
       <Tab.Screen
         name="Citas"
-        component={PatientAppointments}
+        component={AppointmentsStack}
         options={{
           title: 'Mis Citas',
+          headerShown: false,
         }}
       />
       <Tab.Screen

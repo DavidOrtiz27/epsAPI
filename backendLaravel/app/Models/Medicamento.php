@@ -16,7 +16,6 @@ class Medicamento extends Model
         'nombre',
         'presentacion',
         'dosis_recomendada',
-        'stock',
     ];
 
     /**

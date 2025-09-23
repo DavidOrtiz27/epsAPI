@@ -126,6 +126,66 @@ class HorarioMedicoController extends Controller
     }
 
     /**
+     * Get available time slots for a doctor on a specific date
+     */
+    public function availableSlots(Request $request, string $medicoId)
+    {
+        $request->validate([
+            'fecha' => 'required|date|after_or_equal:today',
+        ]);
+
+        $fecha = $request->fecha;
+        $diaSemana = strtolower(date('l', strtotime($fecha)));
+
+        // Map English day names to Spanish
+        $dayMap = [
+            'monday' => 'lunes',
+            'tuesday' => 'martes',
+            'wednesday' => 'miercoles',
+            'thursday' => 'jueves',
+            'friday' => 'viernes',
+            'saturday' => 'sabado',
+            'sunday' => 'domingo',
+        ];
+
+        $diaSemanaEspanol = $dayMap[$diaSemana] ?? $diaSemana;
+
+        // Get doctor's schedule for this day
+        $horarios = HorarioMedico::where('medico_id', $medicoId)
+            ->where('dia_semana', $diaSemanaEspanol)
+            ->get();
+
+        if ($horarios->isEmpty()) {
+            return response()->json(['available_slots' => []]);
+        }
+
+        $availableSlots = [];
+
+        foreach ($horarios as $horario) {
+            $horaInicio = strtotime($horario->hora_inicio);
+            $horaFin = strtotime($horario->hora_fin);
+
+            // Generate 30-minute slots
+            for ($time = $horaInicio; $time < $horaFin; $time += 1800) { // 30 minutes = 1800 seconds
+                $slotTime = date('H:i', $time);
+                $slotDateTime = $fecha . ' ' . $slotTime . ':00';
+
+                // Check if slot is already booked
+                $isBooked = \App\Models\Cita::where('medico_id', $medicoId)
+                    ->where('fecha', $slotDateTime)
+                    ->where('estado', '!=', 'cancelada')
+                    ->exists();
+
+                if (!$isBooked) {
+                    $availableSlots[] = $slotTime;
+                }
+            }
+        }
+
+        return response()->json(['available_slots' => $availableSlots]);
+    }
+
+    /**
      * Check if user can access the schedule
      */
     private function canAccessHorario($user, $horario)

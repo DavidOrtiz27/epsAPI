@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-//const API_BASE_URL = 'http://10.2.234.14:8001/api';
-const API_BASE_URL = 'http://192.168.122.1:8000/api';
-//const API_BASE_URL = 'http://192.168.1.8:8000/api';
+
+const API_BASE_URL = 'http://10.14.177.230:8001/api';
 
 class ApiService {
   constructor() {
@@ -22,6 +21,9 @@ class ApiService {
     const token = await this.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('API request to:', endpoint, 'with token present');
+    } else {
+      console.log('API request to:', endpoint, 'without token');
     }
 
     try {
@@ -36,12 +38,22 @@ class ApiService {
       }
 
       if (!response.ok) {
+        // Handle 401 errors by clearing token and throwing a specific error
+        if (response.status === 401) {
+          console.log('401 error detected for endpoint:', endpoint, 'clearing invalid token');
+          console.log('Response data:', data);
+          await this.removeToken();
+          const error = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+          error.status = response.status;
+          error.endpoint = endpoint;
+          error.sessionExpired = true; // Flag to indicate session expiry
+          throw error;
+        }
+
         // Create a more specific error based on status code
         let errorMessage = data.message || 'Error desconocido';
 
-        if (response.status === 401) {
-          errorMessage = data.message || 'Credenciales incorrectas';
-        } else if (response.status === 403) {
+        if (response.status === 403) {
           errorMessage = data.message || 'No tienes permisos para esta acción';
         } else if (response.status === 404) {
           errorMessage = data.message || 'Recurso no encontrado';
@@ -137,6 +149,11 @@ class ApiService {
     return await this.request('/auth/me');
   }
 
+  async isAuthenticated() {
+    const token = await this.getToken();
+    return !!token;
+  }
+
   // Patient endpoints
   async getPatientProfile() {
     return await this.request('/pacientes/profile');
@@ -181,6 +198,10 @@ class ApiService {
     return await this.request('/medicamentos');
   }
 
+  async getTreatments() {
+    return await this.request('/tratamientos');
+  }
+
   async searchMedications(query) {
     return await this.request(`/medicamentos/search?query=${query}`);
   }
@@ -206,6 +227,53 @@ class ApiService {
     });
   }
 
+  // Doctor-specific methods
+  async createMedicalRecord(recordData) {
+    return await this.request('/medicos/historial-clinico', {
+      method: 'POST',
+      body: JSON.stringify(recordData),
+    });
+  }
+
+  async createTreatment(treatmentData) {
+    return await this.request('/medicos/tratamientos', {
+      method: 'POST',
+      body: JSON.stringify(treatmentData),
+    });
+  }
+
+  async createPrescription(prescriptionData) {
+    return await this.request('/medicos/recetas-medicas', {
+      method: 'POST',
+      body: JSON.stringify(prescriptionData),
+    });
+  }
+
+  async createExam(examData) {
+    return await this.request('/medicos/examenes', {
+      method: 'POST',
+      body: JSON.stringify(examData),
+    });
+  }
+
+  // Appointment management
+  async getAppointment(appointmentId) {
+    return await this.request(`/citas/${appointmentId}`);
+  }
+
+  async updateAppointment(appointmentId, appointmentData) {
+    return await this.request(`/citas/${appointmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(appointmentData),
+    });
+  }
+
+  async deleteAppointment(appointmentId) {
+    return await this.request(`/citas/${appointmentId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Notifications
   async getNotifications() {
     return await this.request('/notificaciones');
@@ -214,6 +282,90 @@ class ApiService {
   async markNotificationAsRead(notificationId) {
     return await this.request(`/notificaciones/${notificationId}/read`, {
       method: 'PUT',
+    });
+  }
+
+  async getAvailableSlots(doctorId, date) {
+    return await this.request(`/medicos/${doctorId}/horarios/disponibles?fecha=${date}`);
+  }
+
+  // Doctor reports
+  async getDoctorReports() {
+    return await this.request('/medicos/reportes');
+  }
+
+  // Admin endpoints
+  async getAdminDashboard() {
+    return await this.request('/admin/dashboard');
+  }
+
+  async getAdminReports() {
+    return await this.request('/admin/reportes');
+  }
+
+  // Admin Patient Management
+  async getPatients() {
+    return await this.request('/pacientes');
+  }
+
+  async getPatient(id) {
+    return await this.request(`/pacientes/${id}`);
+  }
+
+  async createPatient(patientData) {
+    return await this.request('/pacientes', {
+      method: 'POST',
+      body: JSON.stringify(patientData),
+    });
+  }
+
+  async updatePatient(id, patientData) {
+    return await this.request(`/pacientes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patientData),
+    });
+  }
+
+  async deletePatient(id) {
+    return await this.request(`/pacientes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Admin Doctor Management
+  async getDoctors() {
+    return await this.request('/medicos');
+  }
+
+  async getDoctor(id) {
+    return await this.request(`/medicos/${id}`);
+  }
+
+  async createDoctor(doctorData) {
+    return await this.request('/medicos', {
+      method: 'POST',
+      body: JSON.stringify(doctorData),
+    });
+  }
+
+  async updateDoctor(id, doctorData) {
+    return await this.request(`/medicos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(doctorData),
+    });
+  }
+
+  async deleteDoctor(id) {
+    return await this.request(`/medicos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Admin Doctor Creation (creates user + doctor)
+  async createDoctorWithUser(doctorData) {
+    return await this.request('/admin/create-doctor', {
+      method: 'POST',
+      body: JSON.stringify(doctorData),
     });
   }
 }
