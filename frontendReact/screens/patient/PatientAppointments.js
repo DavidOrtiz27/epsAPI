@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
@@ -43,10 +42,7 @@ const PatientAppointments = () => {
       'Cancelar Cita',
       '¿Estás seguro de que quieres cancelar esta cita?',
       [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
+        { text: 'No', style: 'cancel' },
         {
           text: 'Sí, cancelar',
           style: 'destructive',
@@ -54,7 +50,7 @@ const PatientAppointments = () => {
             try {
               await apiService.cancelAppointment(appointmentId);
               Alert.alert('Éxito', 'Cita cancelada exitosamente');
-              loadAppointments(); // Refresh the list
+              loadAppointments();
             } catch (error) {
               console.error('Error canceling appointment:', error);
               Alert.alert('Error', 'No se pudo cancelar la cita. Intente nuevamente.');
@@ -71,6 +67,7 @@ const PatientAppointments = () => {
 
     return (
       <View style={styles.appointmentCard}>
+        {/* Fecha + Estado */}
         <View style={styles.appointmentHeader}>
           <Text style={styles.appointmentDate}>
             {new Date(appointment.fecha).toLocaleDateString('es-ES', {
@@ -85,6 +82,7 @@ const PatientAppointments = () => {
           </View>
         </View>
 
+        {/* Hora */}
         <Text style={styles.appointmentTime}>
           {new Date(appointment.fecha).toLocaleTimeString('es-ES', {
             hour: '2-digit',
@@ -92,23 +90,27 @@ const PatientAppointments = () => {
           })}
         </Text>
 
-        <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
+        {/* Motivo */}
+        <Text style={styles.appointmentMotivo}>
+          {appointment.motivo || 'Consulta general'}
+        </Text>
 
-        {appointment.medico && (
-          <View style={styles.doctorInfo}>
-            <Ionicons name="medical" size={16} color="#666" />
-            <Text style={styles.doctorName}>
-              Dr. {appointment.medico.user?.name || 'Médico asignado'}
-            </Text>
-          </View>
-        )}
+        {/* Médico */}
+        <View style={styles.doctorInfo}>
+          <Ionicons name="medical" size={16} color="#666" />
+          <Text style={styles.doctorName}>
+            {appointment.medico?.user?.name ? `Dr. ${appointment.medico.user.name}` : 'Médico asignado'}
+          </Text>
+        </View>
 
-        {appointment.medico?.especialidad && (
+        {/* Especialidad */}
+        {appointment.medico?.especialidad?.nombre && (
           <Text style={styles.specialty}>
-            Especialidad: {appointment.medico.especialidad.nombre || 'General'}
+            Especialidad: {appointment.medico.especialidad.nombre}
           </Text>
         )}
 
+        {/* Botón cancelar */}
         {showCancelButton && isUpcoming && isNotCancelled && (
           <View style={styles.actionButtons}>
             <TouchableOpacity
@@ -150,12 +152,12 @@ const PatientAppointments = () => {
     }
   };
 
-  const upcomingAppointments = appointments.filter(apt =>
-    new Date(apt.fecha) >= new Date() && apt.estado?.toLowerCase() !== 'cancelada'
+  const upcomingAppointments = appointments.filter(
+    (apt) => new Date(apt.fecha) >= new Date() && apt.estado?.toLowerCase() !== 'cancelada'
   );
 
-  const pastAppointments = appointments.filter(apt =>
-    new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
+  const pastAppointments = appointments.filter(
+    (apt) => new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
   );
 
   const getFilteredAppointments = () => {
@@ -181,36 +183,15 @@ const PatientAppointments = () => {
   };
 
   const getEmptyStateIcon = () => {
-    switch (activeTab) {
-      case 'proximas':
-        return 'calendar-outline';
-      case 'historial':
-        return 'time-outline';
-      default:
-        return 'calendar-outline';
-    }
+    return activeTab === 'historial' ? 'time-outline' : 'calendar-outline';
   };
 
   const getEmptyStateText = () => {
-    switch (activeTab) {
-      case 'proximas':
-        return 'No tienes citas próximas';
-      case 'historial':
-        return 'No hay citas anteriores';
-      default:
-        return 'No hay citas';
-    }
+    return activeTab === 'historial' ? 'No hay citas anteriores' : 'No tienes citas próximas';
   };
 
   const getEmptyStateSubtext = () => {
-    switch (activeTab) {
-      case 'proximas':
-        return 'Contacta con tu médico para agendar una cita';
-      case 'historial':
-        return null;
-      default:
-        return null;
-    }
+    return activeTab === 'proximas' ? 'Contacta con tu médico para agendar una cita' : null;
   };
 
   const filteredAppointments = getFilteredAppointments();
@@ -275,9 +256,7 @@ const PatientAppointments = () => {
               <Ionicons name={getEmptyStateIcon()} size={48} color="#ccc" />
               <Text style={styles.emptyStateText}>{getEmptyStateText()}</Text>
               {getEmptyStateSubtext() && (
-                <Text style={styles.emptyStateSubtext}>
-                  {getEmptyStateSubtext()}
-                </Text>
+                <Text style={styles.emptyStateSubtext}>{getEmptyStateSubtext()}</Text>
               )}
             </View>
           )}
@@ -288,13 +267,8 @@ const PatientAppointments = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  scrollView: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -305,33 +279,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  welcomeContainer: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  section: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-  },
+  welcomeContainer: { flex: 1 },
+  welcomeText: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  subtitle: { fontSize: 14, color: '#666' },
+  headerButtons: { flexDirection: 'row', alignItems: 'center' },
+  addButton: { padding: 8, marginRight: 8 },
+  logoutButton: { padding: 8 },
+  section: { paddingHorizontal: 24, paddingVertical: 20 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -344,10 +298,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -358,61 +309,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  appointmentDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  statusPending: {
-    backgroundColor: '#FF9500',
-  },
-  statusConfirmed: {
-    backgroundColor: '#34C759',
-  },
-  statusCancelled: {
-    backgroundColor: '#FF3B30',
-  },
-  statusCompleted: {
-    backgroundColor: '#007AFF',
-  },
-  appointmentTime: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
+  appointmentDate: { fontSize: 16, fontWeight: '600', color: '#333' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  statusText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+  statusPending: { backgroundColor: '#FF9500' },
+  statusConfirmed: { backgroundColor: '#34C759' },
+  statusCancelled: { backgroundColor: '#FF3B30' },
+  statusCompleted: { backgroundColor: '#007AFF' },
+  appointmentTime: { fontSize: 14, color: '#666', marginBottom: 4 },
   appointmentMotivo: {
     fontSize: 16,
     color: '#333',
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
-  doctorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  doctorName: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  specialty: {
-    fontSize: 12,
-    color: '#999',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
+  doctorInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  doctorName: { fontSize: 14, color: '#666', marginLeft: 4, flexShrink: 1 },
+  specialty: { fontSize: 12, color: '#999', marginTop: 4, flexWrap: 'wrap' },
+  emptyState: { alignItems: 'center', paddingVertical: 40 },
   emptyStateText: {
     fontSize: 18,
     color: '#666',
@@ -462,17 +376,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  activeTab: {
-    borderBottomColor: '#007AFF',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  activeTabText: {
-    color: '#007AFF',
-  },
- });
+  activeTab: { borderBottomColor: '#007AFF' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#666' },
+  activeTabText: { color: '#007AFF' },
+});
 
 export default PatientAppointments;

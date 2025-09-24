@@ -21,7 +21,7 @@ class AdminController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRole('admin')) {
+        if (!$user->hasRole('admin') && !$user->hasRole('superadmin')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -51,14 +51,38 @@ class AdminController extends Controller
             $totalUsuarios = User::count();
             $usuariosActivos = User::where('created_at', '>=', now()->subDays(30))->count();
 
+            // Patient activity statistics
+            $pacientesConCitas = DB::table('citas')
+                ->select('paciente_id')
+                ->distinct()
+                ->count();
+            $pacientesConHistorial = DB::table('historial_clinico')
+                ->select('paciente_id')
+                ->distinct()
+                ->count();
+
+            // Doctor performance statistics
+            $doctoresActivos = DB::table('citas')
+                ->select('medico_id')
+                ->where('fecha', '>=', now()->subDays(30)->toDateString())
+                ->distinct()
+                ->count();
+
+            // Specialty distribution
+            $especialidades = DB::table('medicos')
+                ->select('especialidad', DB::raw('COUNT(*) as count'))
+                ->whereNotNull('especialidad')
+                ->groupBy('especialidad')
+                ->orderBy('count', 'desc')
+                ->get();
+
             // Recent activity (last 7 days)
-            // Note: citas table doesn't have timestamps, so we use fecha instead
-            // tratamientos table uses fecha_inicio instead of created_at
             $actividadReciente = [
                 'citas_creadas' => Cita::where('fecha', '>=', now()->subDays(7)->toDateString())->count(),
                 'pacientes_registrados' => Paciente::where('created_at', '>=', now()->subDays(7))->count(),
                 'registros_medicos' => HistorialClinico::where('created_at', '>=', now()->subDays(7))->count(),
                 'tratamientos_iniciados' => Tratamiento::where('fecha_inicio', '>=', now()->subDays(7)->toDateString())->count(),
+                'recetas_emitidas' => RecetaMedica::count(), // No timestamps in receta_medica table
             ];
 
             // Monthly trends (last 6 months)
@@ -79,15 +103,45 @@ class AdminController extends Controller
                     'tratamientos' => Tratamiento::whereMonth('fecha_inicio', $fecha->month)
                         ->whereYear('fecha_inicio', $fecha->year)
                         ->count(),
+                    'citas_realizadas' => Cita::where('estado', 'realizada')
+                        ->whereMonth('fecha', $fecha->month)
+                        ->whereYear('fecha', $fecha->year)
+                        ->count(),
                 ];
             }
 
-            // System health
+            // System health and performance metrics
             $saludSistema = [
                 'total_usuarios' => $totalUsuarios,
                 'usuarios_activos_30_dias' => $usuariosActivos,
                 'tasa_ocupacion_citas' => $totalCitas > 0 ? round(($citasRealizadas / $totalCitas) * 100, 1) : 0,
+                'tasa_confirmacion_citas' => $totalCitas > 0 ? round(($citasConfirmadas / $totalCitas) * 100, 1) : 0,
                 'promedio_citas_por_dia' => round($citasMes / now()->day, 1),
+                'promedio_citas_por_paciente' => $totalPacientes > 0 ? round($totalCitas / $totalPacientes, 1) : 0,
+                'promedio_registros_por_paciente' => $totalPacientes > 0 ? round($totalRegistrosMedicos / $totalPacientes, 1) : 0,
+                'pacientes_con_actividad' => $pacientesConCitas,
+                'pacientes_con_historial' => $pacientesConHistorial,
+                'doctores_activos' => $doctoresActivos,
+            ];
+
+            // Appointment status distribution with percentages
+            $distribucionEstados = [
+                'pendientes' => [
+                    'cantidad' => $citasPendientes,
+                    'porcentaje' => $totalCitas > 0 ? round(($citasPendientes / $totalCitas) * 100, 1) : 0,
+                ],
+                'confirmadas' => [
+                    'cantidad' => $citasConfirmadas,
+                    'porcentaje' => $totalCitas > 0 ? round(($citasConfirmadas / $totalCitas) * 100, 1) : 0,
+                ],
+                'realizadas' => [
+                    'cantidad' => $citasRealizadas,
+                    'porcentaje' => $totalCitas > 0 ? round(($citasRealizadas / $totalCitas) * 100, 1) : 0,
+                ],
+                'canceladas' => [
+                    'cantidad' => $citasCanceladas,
+                    'porcentaje' => $totalCitas > 0 ? round(($citasCanceladas / $totalCitas) * 100, 1) : 0,
+                ],
             ];
 
             $estadisticas = [
@@ -116,13 +170,30 @@ class AdminController extends Controller
                     'recetas_medicas' => $totalRecetas,
                 ],
 
+                // Patient activity
+                'actividad_pacientes' => [
+                    'pacientes_con_citas' => $pacientesConCitas,
+                    'pacientes_con_historial' => $pacientesConHistorial,
+                    'tasa_actividad_pacientes' => $totalPacientes > 0 ? round(($pacientesConCitas / $totalPacientes) * 100, 1) : 0,
+                ],
+
+                // Doctor activity
+                'actividad_doctores' => [
+                    'doctores_activos' => $doctoresActivos,
+                    'especialidades' => $especialidades,
+                    'tasa_actividad_doctores' => $totalDoctores > 0 ? round(($doctoresActivos / $totalDoctores) * 100, 1) : 0,
+                ],
+
+                // Appointment status distribution with percentages
+                'distribucion_estados_citas' => $distribucionEstados,
+
                 // Recent activity
                 'actividad_reciente' => $actividadReciente,
 
-                // Monthly trends
+                // Monthly trends (enhanced)
                 'tendencia_mensual' => $tendenciaMensual,
 
-                // System health
+                // System health and performance
                 'salud_sistema' => $saludSistema,
 
                 // Generated timestamp

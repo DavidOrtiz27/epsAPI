@@ -3,14 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   Alert,
   TextInput,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 
@@ -29,6 +30,13 @@ const AdminDoctors = ({ navigation }) => {
   useEffect(() => {
     filterDoctors();
   }, [doctors, searchQuery]);
+
+  // Reload doctors when screen comes into focus (after creating/editing)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDoctors();
+    }, [])
+  );
 
   const loadDoctors = async () => {
     try {

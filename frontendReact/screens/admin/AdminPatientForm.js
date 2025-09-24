@@ -3,16 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
   Platform,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import CustomInput from '../../components/ui/CustomInput';
+import CustomButton from '../../components/ui/CustomButton';
 
 const AdminPatientForm = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -21,8 +24,16 @@ const AdminPatientForm = ({ navigation, route }) => {
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [formData, setFormData] = useState({
-    user_id: '',
+    // User information
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    
+    // Patient information
     documento: '',
     telefono: '',
     direccion: '',
@@ -40,14 +51,26 @@ const AdminPatientForm = ({ navigation, route }) => {
   const loadPatient = async () => {
     try {
       const patient = await apiService.getPatient(patientId);
+      const birthDate = patient.fecha_nacimiento ? new Date(patient.fecha_nacimiento) : new Date();
+      
       setFormData({
-        user_id: patient.user_id?.toString() || '',
+        // User information (read-only when editing)
+        name: patient.user?.name || '',
+        email: patient.user?.email || '',
+        password: '',
+        password_confirmation: '',
+        
+        // Patient information
         documento: patient.documento || '',
         telefono: patient.telefono || '',
         direccion: patient.direccion || '',
         fecha_nacimiento: patient.fecha_nacimiento || '',
         genero: patient.genero || '',
       });
+      
+      if (patient.fecha_nacimiento) {
+        setSelectedDate(birthDate);
+      }
     } catch (error) {
       console.error('Error loading patient:', error);
       Alert.alert('Error', 'No se pudo cargar la información del paciente');
@@ -57,14 +80,52 @@ const AdminPatientForm = ({ navigation, route }) => {
     }
   };
 
+  const handleDateChange = (event, date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (date) {
+      setSelectedDate(date);
+      const formattedDate = date.toISOString().split('T')[0];
+      updateFormData('fecha_nacimiento', formattedDate);
+    }
+  };
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
-    // Only validate user_id when creating new patient
-    if (!isEditing && !formData.user_id.trim()) {
-      newErrors.user_id = 'El ID de usuario es requerido';
+    // User information validation (only for creating new patients)
+    if (!isEditing) {
+      if (!formData.name.trim()) {
+        newErrors.name = 'El nombre es requerido';
+      }
+
+      if (!formData.email.trim()) {
+        newErrors.email = 'El email es requerido';
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = 'El email no es válido';
+      }
+
+      if (!formData.password) {
+        newErrors.password = 'La contraseña es requerida';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+      }
+
+      if (formData.password !== formData.password_confirmation) {
+        newErrors.password_confirmation = 'Las contraseñas no coinciden';
+      }
     }
 
+    // Patient information validation
     if (!formData.documento.trim()) {
       newErrors.documento = 'El documento es requerido';
     } else if (formData.documento.length < 5) {
@@ -107,13 +168,16 @@ const AdminPatientForm = ({ navigation, route }) => {
 
     setSaving(true);
     try {
-      const dataToSend = {
-        ...formData,
-        user_id: parseInt(formData.user_id),
-        genero: formData.genero.toUpperCase(),
-      };
-
       if (isEditing) {
+        // For editing, only update patient information
+        const dataToSend = {
+          documento: formData.documento,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          genero: formData.genero.toUpperCase(),
+        };
+
         await apiService.updatePatient(patientId, dataToSend);
         Alert.alert(
           'Éxito',
@@ -121,10 +185,26 @@ const AdminPatientForm = ({ navigation, route }) => {
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } else {
-        await apiService.createPatient(dataToSend);
+        // For creating, create both user and patient
+        const dataToSend = {
+          // User information
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          
+          // Patient information
+          documento: formData.documento,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          genero: formData.genero.toUpperCase(),
+        };
+
+        // Use register API to create user and patient together
+        await apiService.register(dataToSend);
         Alert.alert(
           'Éxito',
-          'Paciente creado correctamente',
+          'Paciente registrado correctamente',
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
@@ -151,65 +231,43 @@ const AdminPatientForm = ({ navigation, route }) => {
     }
   };
 
-  const renderInput = (field, label, placeholder, keyboardType = 'default', multiline = false, readOnly = false) => (
+  const renderDatePicker = () => (
     <View style={styles.inputContainer}>
-      <View style={styles.labelContainer}>
-        <Text style={styles.label}>{label}</Text>
-        {readOnly && <Text style={styles.readOnlyLabel}>(Solo lectura)</Text>}
-      </View>
-      <TextInput
-        style={[
-          styles.input,
-          multiline && styles.multilineInput,
-          errors[field] && styles.inputError,
-          readOnly && styles.inputReadOnly
-        ]}
-        placeholder={placeholder}
-        value={formData[field]}
-        onChangeText={(value) => updateFormData(field, value)}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-        editable={!saving && !readOnly}
-      />
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+      <Text style={styles.label}>Fecha de Nacimiento</Text>
+      <TouchableOpacity
+        style={[styles.dateSelector, errors.fecha_nacimiento && styles.dateSelectorError]}
+        onPress={() => setShowDatePicker(true)}
+        disabled={saving}
+      >
+        <Ionicons name="calendar-outline" size={20} color="#666" style={styles.dateIcon} />
+        <Text style={[styles.dateText, !formData.fecha_nacimiento && styles.datePlaceholder]}>
+          {formData.fecha_nacimiento ? formatDisplayDate(formData.fecha_nacimiento) : 'Seleccionar fecha de nacimiento'}
+        </Text>
+        <Ionicons name="chevron-down" size={20} color="#666" />
+      </TouchableOpacity>
+      {errors.fecha_nacimiento && <Text style={styles.errorText}>{errors.fecha_nacimiento}</Text>}
     </View>
   );
 
-  const renderGenderSelector = () => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>Género</Text>
-      <View style={styles.genderContainer}>
-        {[
-          { value: 'M', label: 'Masculino' },
-          { value: 'F', label: 'Femenino' },
-          { value: 'O', label: 'Otro' },
-        ].map((option, index) => (
-          <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.genderOption,
-              index < 2 && styles.genderOptionWithMargin, // Only add margin to first two options
-              formData.genero.toUpperCase() === option.value && styles.genderOptionSelected,
-              errors.genero && styles.genderOptionError,
-            ]}
-            onPress={() => updateFormData('genero', option.value)}
-            disabled={saving}
-          >
-            <Text
-              style={[
-                styles.genderOptionText,
-                formData.genero.toUpperCase() === option.value && styles.genderOptionTextSelected,
-              ]}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {errors.genero && <Text style={styles.errorText}>{errors.genero}</Text>}
-    </View>
-  );
+  const renderGenderSelector = () => {
+    const getGenderDisplayValue = () => {
+      const genderMap = { 'M': 'Masculino', 'F': 'Femenino', 'O': 'Otro' };
+      return genderMap[formData.genero.toUpperCase()] || '';
+    };
+
+    return (
+      <CustomInput
+        label="Género"
+        value={getGenderDisplayValue()}
+        placeholder="M (Masculino), F (Femenino), O (Otro)"
+        onChangeText={(value) => updateFormData('genero', value.toUpperCase())}
+        autoCapitalize="characters"
+        error={errors.genero}
+        icon={<Ionicons name="male-female-outline" size={20} color="#666" />}
+        editable={!saving}
+      />
+    );
+  };
 
   if (loading) {
     return (
@@ -243,30 +301,126 @@ const AdminPatientForm = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Form Fields */}
-        {renderInput('user_id', 'ID de Usuario', 'Ingrese el ID del usuario', 'numeric', false, isEditing)}
-
-        {renderInput('documento', 'Documento', 'Número de documento de identidad')}
-
-        {renderInput('telefono', 'Teléfono', 'Número de teléfono', 'phone-pad')}
-
-        {renderInput('direccion', 'Dirección', 'Dirección completa', 'default', true)}
-
-        {renderInput('fecha_nacimiento', 'Fecha de Nacimiento', 'YYYY-MM-DD (ej: 1990-01-15)', 'default')}
-
-        {renderGenderSelector()}
-
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={[styles.saveButtonText, saving && styles.saveButtonTextDisabled]}>
-            {saving ? 'Guardando...' : (isEditing ? 'Actualizar Paciente' : 'Crear Paciente')}
+        {/* Header */}
+        <View style={styles.formHeader}>
+          <Text style={styles.formTitle}>
+            {isEditing ? 'Editar Información del Paciente' : 'Registrar Nuevo Paciente'}
           </Text>
-        </TouchableOpacity>
+          <Text style={styles.formSubtitle}>
+            Complete los datos del paciente para {isEditing ? 'actualizar' : 'crear'} el registro
+          </Text>
+        </View>
+
+        {/* Form Fields */}
+        <View style={styles.form}>
+          {/* User Information Section (only for creating new patients) */}
+          {!isEditing && (
+            <>
+              <CustomInput
+                label="Nombre completo"
+                value={formData.name}
+                onChangeText={(value) => updateFormData('name', value)}
+                placeholder="Ingresa el nombre completo"
+                error={errors.name}
+                icon={<Ionicons name="person-outline" size={20} color="#666" />}
+                editable={!saving}
+              />
+
+              <CustomInput
+                label="Correo electrónico"
+                value={formData.email}
+                onChangeText={(value) => updateFormData('email', value)}
+                placeholder="correo@ejemplo.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email}
+                icon={<Ionicons name="mail-outline" size={20} color="#666" />}
+                editable={!saving}
+              />
+
+              <CustomInput
+                label="Contraseña"
+                value={formData.password}
+                onChangeText={(value) => updateFormData('password', value)}
+                placeholder="Mínimo 8 caracteres"
+                secureTextEntry
+                error={errors.password}
+                icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+                editable={!saving}
+              />
+
+              <CustomInput
+                label="Confirmar contraseña"
+                value={formData.password_confirmation}
+                onChangeText={(value) => updateFormData('password_confirmation', value)}
+                placeholder="Repite la contraseña"
+                secureTextEntry
+                error={errors.password_confirmation}
+                icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+                editable={!saving}
+              />
+            </>
+          )}
+
+          {/* Patient Information Section */}
+          <CustomInput
+            label="Número de documento"
+            value={formData.documento}
+            onChangeText={(value) => updateFormData('documento', value)}
+            placeholder="1234567890"
+            keyboardType="numeric"
+            error={errors.documento}
+            icon={<Ionicons name="card-outline" size={20} color="#666" />}
+            editable={!saving}
+          />
+
+          <CustomInput
+            label="Teléfono"
+            value={formData.telefono}
+            onChangeText={(value) => updateFormData('telefono', value)}
+            placeholder="3001234567"
+            keyboardType="phone-pad"
+            error={errors.telefono}
+            icon={<Ionicons name="call-outline" size={20} color="#666" />}
+            editable={!saving}
+          />
+
+          <CustomInput
+            label="Dirección"
+            value={formData.direccion}
+            onChangeText={(value) => updateFormData('direccion', value)}
+            placeholder="Calle 123 #45-67, Ciudad"
+            error={errors.direccion}
+            icon={<Ionicons name="location-outline" size={20} color="#666" />}
+            multiline={true}
+            numberOfLines={3}
+            editable={!saving}
+          />
+
+          {renderDatePicker()}
+
+          {renderGenderSelector()}
+
+          <CustomButton
+            title={saving ? 'Guardando...' : (isEditing ? 'Actualizar Paciente' : 'Registrar Paciente')}
+            onPress={handleSave}
+            loading={saving}
+            style={styles.saveButton}
+          />
+        </View>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+          minimumDate={new Date('1900-01-01')}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -314,102 +468,80 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  formHeader: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  formSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  form: {
+    width: '100%',
   },
   inputContainer: {
-    marginBottom: 20,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 8,
   },
-  readOnlyLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  input: {
-    backgroundColor: '#fff',
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 12,
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateSelectorError: {
+    borderColor: '#ff3b30',
+  },
+  dateIcon: {
+    marginRight: 8,
+  },
+  dateText: {
+    flex: 1,
     fontSize: 16,
     color: '#333',
   },
-  multilineInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  inputError: {
-    borderColor: '#FF3B30',
-  },
-  inputReadOnly: {
-    backgroundColor: '#f8f9fa',
-    color: '#666',
+  datePlaceholder: {
+    color: '#999',
   },
   errorText: {
     fontSize: 14,
-    color: '#FF3B30',
+    color: '#ff3b30',
     marginTop: 4,
-  },
-  genderContainer: {
-    flexDirection: 'row',
-  },
-  genderOption: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  genderOptionWithMargin: {
-    marginRight: 12,
-  },
-  genderOptionSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  genderOptionError: {
-    borderColor: '#FF3B30',
-  },
-  genderOptionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  genderOptionTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
+    marginLeft: 4,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  saveButtonTextDisabled: {
-    color: '#999',
+    marginTop: 16,
+    marginBottom: 24,
   },
 });
 

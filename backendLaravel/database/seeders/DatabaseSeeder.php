@@ -30,26 +30,12 @@ class DatabaseSeeder extends Seeder
         // ROLES
         // =========================
         $roles = [
-            ['name' => 'superadmin'],
             ['name' => 'admin'],
             ['name' => 'doctor'],
             ['name' => 'paciente'],
         ];
         foreach ($roles as $r) {
             Role::firstOrCreate($r);
-        }
-
-        // =========================
-        // SUPERADMIN
-        // =========================
-        $superadmin = User::firstOrCreate([
-            'email' => 'superadmin@sistema.com',
-        ], [
-            'name' => 'Super Admin',
-            'password' => Hash::make('superadmin123'),
-        ]);
-        if (!$superadmin->hasRole('superadmin')) {
-            $superadmin->roles()->attach(Role::where('name', 'superadmin')->first());
         }
 
         // =========================
@@ -318,7 +304,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Auditoria::create([
-            'user_id' => $superadmin->id,
+            'user_id' => $admin->id,
             'accion' => 'LOGIN',
             'descripcion' => 'Inicio de sesión exitoso',
             'fecha' => now(),

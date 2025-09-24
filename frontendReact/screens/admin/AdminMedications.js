@@ -15,143 +15,127 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 
-const AdminPatients = ({ navigation }) => {
+const AdminMedications = ({ navigation }) => {
   const { user } = useAuth();
-  const [patients, setPatients] = useState([]);
-  const [filteredPatients, setFilteredPatients] = useState([]);
+  const [medications, setMedications] = useState([]);
+  const [filteredMedications, setFilteredMedications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadPatients();
+    loadMedications();
   }, []);
 
   useEffect(() => {
-    filterPatients();
-  }, [patients, searchQuery]);
+    filterMedications();
+  }, [medications, searchQuery]);
 
-  // Reload patients when screen comes into focus (after creating/editing)
+  // Reload medications when screen comes into focus (after creating/editing)
   useFocusEffect(
     React.useCallback(() => {
-      loadPatients();
+      loadMedications();
     }, [])
   );
 
-  const loadPatients = async () => {
+  const loadMedications = async () => {
     try {
-      const patientsData = await apiService.getPatients();
-      setPatients(patientsData);
+      const medicationsData = await apiService.getMedications();
+      setMedications(medicationsData);
     } catch (error) {
-      console.error('Error loading patients:', error);
-      Alert.alert('Error', 'No se pudieron cargar los pacientes');
+      console.error('Error loading medications:', error);
+      Alert.alert('Error', 'No se pudieron cargar los medicamentos');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const filterPatients = () => {
+  const filterMedications = () => {
     if (!searchQuery.trim()) {
-      setFilteredPatients(patients);
+      setFilteredMedications(medications);
       return;
     }
 
-    const filtered = patients.filter(patient => {
-      const fullName = `${patient.user?.name || ''}`.toLowerCase();
-      const documento = `${patient.documento || ''}`.toLowerCase();
-      const telefono = `${patient.telefono || ''}`.toLowerCase();
+    const filtered = medications.filter(medication => {
+      const nombre = `${medication.nombre || ''}`.toLowerCase();
+      const presentacion = `${medication.presentacion || ''}`.toLowerCase();
 
       const query = searchQuery.toLowerCase();
 
-      return fullName.includes(query) ||
-             documento.includes(query) ||
-             telefono.includes(query);
+      return nombre.includes(query) || presentacion.includes(query);
     });
 
-    setFilteredPatients(filtered);
+    setFilteredMedications(filtered);
   };
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadPatients();
+    loadMedications();
   };
 
-  const handleDeletePatient = (patient) => {
+  const handleDeleteMedication = (medication) => {
     Alert.alert(
-      'Eliminar Paciente',
-      `¿Estás seguro de que quieres eliminar al paciente ${patient.user?.name}?`,
+      'Eliminar Medicamento',
+      `¿Estás seguro de que quieres eliminar el medicamento "${medication.nombre}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => deletePatient(patient.id)
+          onPress: () => deleteMedication(medication.id)
         }
       ]
     );
   };
 
-  const deletePatient = async (patientId) => {
+  const deleteMedication = async (medicationId) => {
     try {
-      await apiService.deletePatient(patientId);
-      Alert.alert('Éxito', 'Paciente eliminado correctamente');
-      loadPatients();
+      await apiService.deleteMedication(medicationId);
+      Alert.alert('Éxito', 'Medicamento eliminado correctamente');
+      loadMedications();
     } catch (error) {
-      console.error('Error deleting patient:', error);
-      Alert.alert('Error', 'No se pudo eliminar el paciente');
+      console.error('Error deleting medication:', error);
+      Alert.alert('Error', 'No se pudo eliminar el medicamento');
     }
   };
 
-  const renderPatientItem = ({ item }) => (
+  const renderMedicationItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.patientCard}
-      onPress={() => navigation.navigate('AdminPatientDetail', { patientId: item.id })}
+      style={styles.medicationCard}
+      onPress={() => navigation.navigate('AdminMedicationDetail', { medicationId: item.id })}
     >
-      <View style={styles.patientInfo}>
-        <View style={styles.patientHeader}>
-          <Text style={styles.patientName} numberOfLines={2}>
-            {item.user?.name || 'Sin nombre'}
-          </Text>
-          <View style={styles.patientActions}>
+      <View style={styles.medicationInfo}>
+        <View style={styles.medicationHeader}>
+          <Text style={styles.medicationName}>{item.nombre || 'Sin nombre'}</Text>
+          <View style={styles.medicationActions}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('AdminPatientForm', { patientId: item.id })}
+              onPress={() => navigation.navigate('AdminMedicationForm', { medicationId: item.id })}
             >
               <Ionicons name="pencil" size={20} color="#007AFF" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeletePatient(item)}
+              onPress={() => handleDeleteMedication(item)}
             >
               <Ionicons name="trash" size={20} color="#FF3B30" />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.patientDetails}>
+        <View style={styles.medicationDetails}>
           <View style={styles.detailRow}>
-            <Ionicons name="card-outline" size={16} color="#666" />
-            <Text style={styles.detailText}>{item.documento || 'Sin documento'}</Text>
+            <Ionicons name="medkit-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{item.presentacion || 'Sin presentación'}</Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Ionicons name="call-outline" size={16} color="#666" />
-            <Text style={styles.detailText}>{item.telefono || 'Sin teléfono'}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.detailText} numberOfLines={1}>
-              {item.direccion || 'Sin dirección'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.patientFooter}>
-          <Text style={styles.registrationDate}>
-            Registrado: {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Fecha desconocida'}
-          </Text>
+          {item.dosis_recomendada && (
+            <View style={styles.detailRow}>
+              <Ionicons name="information-circle-outline" size={16} color="#666" />
+              <Text style={styles.detailText}>{item.dosis_recomendada}</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -159,12 +143,12 @@ const AdminPatients = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={64} color="#ccc" />
+      <Ionicons name="medkit-outline" size={64} color="#ccc" />
       <Text style={styles.emptyStateText}>
-        {searchQuery ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}
+        {searchQuery ? 'No se encontraron medicamentos' : 'No hay medicamentos registrados'}
       </Text>
       <Text style={styles.emptyStateSubtext}>
-        {searchQuery ? 'Intenta con otros términos de búsqueda' : 'Los pacientes aparecerán aquí cuando sean registrados'}
+        {searchQuery ? 'Intenta con otros términos de búsqueda' : 'Los medicamentos aparecerán aquí cuando sean registrados'}
       </Text>
     </View>
   );
@@ -173,7 +157,7 @@ const AdminPatients = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando pacientes...</Text>
+          <Text style={styles.loadingText}>Cargando medicamentos...</Text>
         </View>
       </SafeAreaView>
     );
@@ -190,10 +174,10 @@ const AdminPatients = ({ navigation }) => {
           >
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestión de Pacientes</Text>
+          <Text style={styles.headerTitle}>Gestión de Medicamentos</Text>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => navigation.navigate('AdminPatientForm')}
+            onPress={() => navigation.navigate('AdminMedicationForm')}
           >
             <Ionicons name="add" size={24} color="#007AFF" />
           </TouchableOpacity>
@@ -204,7 +188,7 @@ const AdminPatients = ({ navigation }) => {
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar por nombre, documento o teléfono..."
+            placeholder="Buscar por nombre o presentación..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
@@ -220,10 +204,10 @@ const AdminPatients = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Patient List */}
+      {/* Medication List */}
       <FlatList
-        data={filteredPatients}
-        renderItem={renderPatientItem}
+        data={filteredMedications}
+        renderItem={renderMedicationItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -241,8 +225,8 @@ const AdminPatients = ({ navigation }) => {
       {/* Stats Footer */}
       <View style={styles.statsFooter}>
         <Text style={styles.statsText}>
-          Total: {filteredPatients.length} paciente{filteredPatients.length !== 1 ? 's' : ''}
-          {searchQuery ? ` (filtrado de ${patients.length})` : ''}
+          Total: {filteredMedications.length} medicamento{filteredMedications.length !== 1 ? 's' : ''}
+          {searchQuery ? ` (filtrado de ${medications.length})` : ''}
         </Text>
       </View>
     </SafeAreaView>
@@ -311,7 +295,7 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
-  patientCard: {
+  medicationCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     marginBottom: 12,
@@ -324,23 +308,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  patientInfo: {
+  medicationInfo: {
     padding: 16,
   },
-  patientHeader: {
+  medicationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  patientName: {
+  medicationName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     flex: 1,
     marginRight: 8,
   },
-  patientActions: {
+  medicationActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -353,7 +337,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#FFF5F5',
   },
-  patientDetails: {
+  medicationDetails: {
     marginBottom: 12,
   },
   detailRow: {
@@ -366,16 +350,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 8,
     flex: 1,
-  },
-  patientFooter: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 8,
-  },
-  registrationDate: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
   },
   emptyState: {
     flex: 1,
@@ -419,4 +393,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdminPatients;
+export default AdminMedications;

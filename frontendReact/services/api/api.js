@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://10.14.177.230:8001/api';
+const API_BASE_URL = 'http://10.2.233.173:8000/api';
 
 class ApiService {
   constructor() {
@@ -39,7 +39,8 @@ class ApiService {
 
       if (!response.ok) {
         // Handle 401 errors by clearing token and throwing a specific error
-        if (response.status === 401) {
+        // But exclude login and register endpoints from session expiration logic
+        if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
           console.log('401 error detected for endpoint:', endpoint, 'clearing invalid token');
           console.log('Response data:', data);
           await this.removeToken();
@@ -154,6 +155,13 @@ class ApiService {
     return !!token;
   }
 
+  // Utility method to clear all authentication data
+  async clearAuthData() {
+    console.log('Clearing all authentication data...');
+    await this.removeToken();
+    return true;
+  }
+
   // Patient endpoints
   async getPatientProfile() {
     return await this.request('/pacientes/profile');
@@ -257,6 +265,10 @@ class ApiService {
   }
 
   // Appointment management
+  async getAppointments() {
+    return await this.request('/citas');
+  }
+
   async getAppointment(appointmentId) {
     return await this.request(`/citas/${appointmentId}`);
   }
@@ -367,6 +379,65 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(doctorData),
     });
+  }
+
+  // Admin Medication Management
+  async getMedication(id) {
+    return await this.request(`/medicamentos/${id}`);
+  }
+
+  async createMedication(medicationData) {
+    return await this.request('/medicamentos', {
+      method: 'POST',
+      body: JSON.stringify(medicationData),
+    });
+  }
+
+  async updateMedication(id, medicationData) {
+    return await this.request(`/medicamentos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(medicationData),
+    });
+  }
+
+  async deleteMedication(id) {
+    return await this.request(`/medicamentos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Superadmin User Management
+  async getUsers() {
+    return await this.request('/admin/users');
+  }
+
+  async updateUserRoles(userId, rolesData) {
+    return await this.request(`/admin/users/${userId}/roles`, {
+      method: 'PUT',
+      body: JSON.stringify(rolesData),
+    });
+  }
+
+  async deleteUser(userId) {
+    return await this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createAdmin(adminData) {
+    return await this.request('/admin/create-admin', {
+      method: 'POST',
+      body: JSON.stringify(adminData),
+    });
+  }
+
+  // Superadmin Audit Logs
+  async getAudits() {
+    return await this.request('/auditorias');
+  }
+
+  async getAudit(id) {
+    return await this.request(`/auditorias/${id}`);
   }
 }
 

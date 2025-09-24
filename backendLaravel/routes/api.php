@@ -33,13 +33,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Medications (moved to main auth group)
-    Route::get('/medicamentos', function () {
-        return response()->json([
-            ['id' => 1, 'nombre' => 'Paracetamol', 'presentacion' => '500mg tabletas'],
-            ['id' => 2, 'nombre' => 'Losartán', 'presentacion' => '50mg tabletas'],
-        ]);
-    });
+    // Medications - allow authenticated users to view (will be filtered by MedicamentoController)
+    Route::get('/medicamentos', [MedicamentoController::class, 'index']);
 
     // User info
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -127,7 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('medicos', MedicoController::class);
         Route::apiResource('historial-clinico', HistorialClinicoController::class);
         Route::apiResource('tratamientos', TratamientoController::class);
-        // Route::apiResource('medicamentos', MedicamentoController::class); // Temporarily disabled
+        Route::apiResource('medicamentos', MedicamentoController::class);
         Route::apiResource('recetas-medicas', RecetaMedicaController::class);
         Route::apiResource('examenes', ExamenController::class);
         Route::apiResource('facturas', FacturaController::class);
@@ -145,22 +140,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/create-doctor', [AuthController::class, 'createDoctor']);
     });
 
-    // ==========================================
-    // SUPERADMIN ROUTES (superadmin role)
-    // ==========================================
-
-    Route::middleware('role:superadmin')->group(function () {
-        // Inherits all admin permissions plus audit logs
-        Route::apiResource('auditorias', AuditoriaController::class);
-
-        // User management
-        Route::get('/admin/users', [AuthController::class, 'listUsers']);
-        Route::put('/admin/users/{id}/roles', [AuthController::class, 'updateUserRoles']);
-        Route::delete('/admin/users/{id}', [AuthController::class, 'deleteUser']);
-
-        // Create admins
-        Route::post('/admin/create-admin', [AuthController::class, 'createAdmin']);
-    });
 
     // ==========================================
     // SHARED ROUTES (Multiple roles can access)

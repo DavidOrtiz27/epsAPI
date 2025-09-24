@@ -14,7 +14,11 @@ import {
   AdminPatientForm,
   AdminDoctors,
   AdminDoctorDetail,
-  AdminDoctorForm
+  AdminDoctorForm,
+  AdminMedications,
+  AdminMedicationForm,
+  AdminAppointments,
+  AdminReports
 } from '../../screens/admin';
 
 const Stack = createStackNavigator();
@@ -81,7 +85,7 @@ const AppNavigator = () => {
             )}
 
             {/* Admin screens */}
-            {user?.roles?.some(role => role.name === 'admin' || role.name === 'superadmin') && (
+            {user?.roles?.some(role => role.name === 'admin') && (
               <>
                 <Stack.Screen
                   name="AdminDashboard"
@@ -133,6 +137,35 @@ const AppNavigator = () => {
                     headerShown: false,
                   }}
                 />
+                <Stack.Screen
+                  name="AdminMedications"
+                  component={AdminMedications}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="AdminMedicationForm"
+                  component={AdminMedicationForm}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="AdminAppointments"
+                  component={AdminAppointments}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="AdminReports"
+                  component={AdminReports}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+
               </>
             )}
           </>

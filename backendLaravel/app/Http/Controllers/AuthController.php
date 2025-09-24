@@ -124,8 +124,8 @@ class AuthController extends Controller
 
         $currentUser = Auth::user();
 
-        // Only admins and superadmins can create doctors
-        if (!$currentUser->hasRole('admin') && !$currentUser->hasRole('superadmin')) {
+        // Only admins can create doctors
+        if (!$currentUser->hasRole('admin')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -163,143 +163,6 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * Create a new admin (only for superadmins)
-     */
-    public function createAdmin(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'documento' => 'required|string|max:50|unique:pacientes',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
 
-        $currentUser = Auth::user();
-
-        // Only superadmins can create admins
-        if (!$currentUser->hasRole('superadmin')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'status' => 'active',
-        ]);
-
-        // Assign admin role
-        $adminRole = \App\Models\Role::where('name', 'admin')->first();
-        if ($adminRole) {
-            $user->roles()->attach($adminRole);
-        }
-
-        // Log the admin creation
-        \App\Models\Auditoria::create([
-            'user_id' => $currentUser->id,
-            'accion' => 'Creación de admin',
-            'descripcion' => "Admin creado: {$user->name} ({$user->email}) por {$currentUser->name}",
-        ]);
-
-        return response()->json([
-            'user' => $user->load('roles'),
-            'message' => 'Admin created successfully'
-        ], 201);
-    }
-
-    /**
-     * List all users (for admins and superadmins)
-     */
-    public function listUsers(Request $request)
-    {
-        $currentUser = Auth::user();
-
-        if (!$currentUser->hasRole('admin') && !$currentUser->hasRole('superadmin')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $users = User::with('roles')->get();
-
-        return response()->json($users);
-    }
-
-    /**
-     * Update user roles (for superadmins)
-     */
-    public function updateUserRoles(Request $request, string $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'role' => 'required|in:paciente,doctor,admin',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $currentUser = Auth::user();
-
-        // Only superadmins can update roles
-        if (!$currentUser->hasRole('superadmin')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $user = User::findOrFail($id);
-
-        // Clear existing roles
-        $user->roles()->detach();
-
-        // Assign new role
-        $role = \App\Models\Role::where('name', $request->role)->first();
-        if ($role) {
-            $user->roles()->attach($role);
-        }
-
-        // Log the role update
-        \App\Models\Auditoria::create([
-            'user_id' => $currentUser->id,
-            'accion' => 'Actualización de rol',
-            'descripcion' => "Rol de {$user->name} ({$user->email}) actualizado a {$request->role} por {$currentUser->name}",
-        ]);
-
-        return response()->json([
-            'user' => $user->load('roles'),
-            'message' => 'User role updated successfully'
-        ]);
-    }
-
-    /**
-     * Delete user (for superadmins)
-     */
-    public function deleteUser(Request $request, string $id)
-    {
-        $currentUser = Auth::user();
-
-        // Only superadmins can delete users
-        if (!$currentUser->hasRole('superadmin')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $user = User::findOrFail($id);
-
-        // Prevent deleting superadmin accounts
-        if ($user->hasRole('superadmin')) {
-            return response()->json(['message' => 'Cannot delete superadmin accounts'], 403);
-        }
-
-        // Log the user deletion
-        \App\Models\Auditoria::create([
-            'user_id' => $currentUser->id,
-            'accion' => 'Eliminación de usuario',
-            'descripcion' => "Usuario eliminado: {$user->name} ({$user->email}) por {$currentUser->name}",
-        ]);
-
-        $user->delete();
-
-        return response()->json(['message' => 'User deleted successfully']);
-    }
 }

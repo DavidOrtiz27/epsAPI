@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
@@ -116,27 +116,13 @@ const AdminDashboard = ({ navigation }) => {
         navigation.navigate('AdminDoctors');
         break;
       case 'Ver Citas':
-        Alert.alert('Ver Citas', 'Funcionalidad disponible en el menú de administración completo.');
+        navigation.navigate('AdminAppointments');
         break;
       case 'Reportes':
-        Alert.alert(
-          'Reportes del Sistema',
-          `Sistema Médico - Estadísticas Actuales:\n\n` +
-          `📊 Total de Citas: ${stats.totalCitas}\n` +
-          `👥 Total de Pacientes: ${stats.totalPacientes}\n` +
-          `🏥 Total de Doctores: ${stats.totalDoctores}\n` +
-          `📅 Citas Hoy: ${stats.citasHoy}\n` +
-          `⏳ Citas Pendientes: ${stats.citasPendientes}\n` +
-          `✅ Citas Realizadas: ${stats.citasRealizadas}\n\n` +
-          `Los reportes detallados estarán disponibles próximamente.`,
-          [{ text: 'OK' }]
-        );
+        navigation.navigate('AdminReports');
         break;
       case 'Medicamentos':
-        Alert.alert('Medicamentos', 'Funcionalidad disponible en el menú de administración completo.');
-        break;
-      case 'Configuración':
-        Alert.alert('Configuración', 'Funcionalidad disponible en el menú de administración completo.');
+        navigation.navigate('AdminMedications');
         break;
       default:
         Alert.alert('Funcionalidad en desarrollo', `La acción "${action}" estará disponible próximamente.`);
@@ -255,47 +241,10 @@ const AdminDashboard = ({ navigation }) => {
               icon="medkit-outline"
               onPress={() => handleQuickAction('Medicamentos')}
             />
-            <QuickAction
-              title="Configuración"
-              icon="settings-outline"
-              onPress={() => handleQuickAction('Configuración')}
-            />
+
           </View>
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.activitySection}>
-          <Text style={styles.sectionTitle}>Actividad Reciente</Text>
-          <View style={styles.activityList}>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="person-add-outline" size={20} color="#007AFF" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Nuevo paciente registrado</Text>
-                <Text style={styles.activityTime}>Hace 2 horas</Text>
-              </View>
-            </View>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="calendar-outline" size={20} color="#34C759" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Cita confirmada</Text>
-                <Text style={styles.activityTime}>Hace 4 horas</Text>
-              </View>
-            </View>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="medical-outline" size={20} color="#FF9500" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Nuevo doctor registrado</Text>
-                <Text style={styles.activityTime}>Hace 1 día</Text>
-              </View>
-            </View>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
