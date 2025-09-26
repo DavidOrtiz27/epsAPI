@@ -1,6 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const API_BASE_URL = 'http://10.2.233.173:8000/api';
+// Configuración para desarrollo local con teléfono físico
+// Para teléfono físico, usar la IP de la máquina host
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'android') {
+    // Para teléfono físico Android, usar IP real de la máquina
+    return 'http://10.2.234.100:8000/api';
+  }
+  // Para iOS simulator o desarrollo web
+  return 'http://localhost:8000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   constructor() {
@@ -21,9 +33,6 @@ class ApiService {
     const token = await this.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('API request to:', endpoint, 'with token present');
-    } else {
-      console.log('API request to:', endpoint, 'without token');
     }
 
     try {
@@ -41,8 +50,6 @@ class ApiService {
         // Handle 401 errors by clearing token and throwing a specific error
         // But exclude login and register endpoints from session expiration logic
         if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
-          console.log('401 error detected for endpoint:', endpoint, 'clearing invalid token');
-          console.log('Response data:', data);
           await this.removeToken();
           const error = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
           error.status = response.status;
@@ -76,8 +83,6 @@ class ApiService {
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
-
       // If it's a network error or other fetch error
       if (!error.status) {
         error.message = 'Error de conexión. Verifica tu conexión a internet.';
@@ -92,7 +97,6 @@ class ApiService {
       const token = await AsyncStorage.getItem('auth_token');
       return token;
     } catch (error) {
-      console.error('Error getting token:', error);
       return null;
     }
   }
@@ -140,7 +144,7 @@ class ApiService {
     try {
       await this.request('/auth/logout', { method: 'POST' });
     } catch (error) {
-      console.error('Logout API error:', error);
+      // Logout errors are not critical, just clear local tokens
     } finally {
       await this.removeToken();
     }
@@ -157,7 +161,6 @@ class ApiService {
 
   // Utility method to clear all authentication data
   async clearAuthData() {
-    console.log('Clearing all authentication data...');
     await this.removeToken();
     return true;
   }

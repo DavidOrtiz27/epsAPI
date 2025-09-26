@@ -111,7 +111,6 @@ const RegisterScreen = () => {
         ]
       );
     } catch (error) {
-      console.error('Register error:', error);
       showErrorAlert(error, 'Ocurrió un error al crear tu cuenta. Por favor, intenta nuevamente.');
     } finally {
       setLoading(false);

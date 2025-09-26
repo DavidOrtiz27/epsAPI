@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiService from '../../services/api/api';
 import CustomButton from '../../components/ui/CustomButton';
 
@@ -25,6 +25,13 @@ const DoctorAppointments = () => {
   useEffect(() => {
     loadAppointments();
   }, []);
+
+  // Refresh appointments when screen comes back into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAppointments();
+    }, [])
+  );
 
   const loadAppointments = async () => {
     try {

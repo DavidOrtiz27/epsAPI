@@ -50,11 +50,15 @@ const LoginScreen = () => {
 
     setLoading(true);
     try {
-      await login(email.trim(), password);3
+      await login(email.trim(), password);
       // Navigation will be handled automatically by AuthContext
     } catch (error) {
-      console.error('Login error:', error);
-      showErrorAlert(error, 'Ha ocurrido un error durante el inicio de sesión.');
+      // Mostrar alerta visual en lugar de console.error
+      if (error.message?.includes('Invalid credentials') || error.message?.includes('credenciales')) {
+        showErrorAlert(error, 'Usuario o contraseña incorrectos. Por favor, verifica tus datos.');
+      } else {
+        showErrorAlert(error, 'Ha ocurrido un error durante el inicio de sesión.');
+      }
     } finally {
       setLoading(false);
     }

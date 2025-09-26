@@ -244,26 +244,7 @@ class DatabaseSeeder extends Seeder
         // =========================
         // HORARIOS MÉDICOS
         // =========================
-        HorarioMedico::create([
-            'medico_id' => 1,
-            'dia_semana' => 'lunes',
-            'hora_inicio' => '08:00',
-            'hora_fin' => '12:00',
-        ]);
-
-        HorarioMedico::create([
-            'medico_id' => 1,
-            'dia_semana' => 'miercoles',
-            'hora_inicio' => '14:00',
-            'hora_fin' => '18:00',
-        ]);
-
-        HorarioMedico::create([
-            'medico_id' => 1,
-            'dia_semana' => 'viernes',
-            'hora_inicio' => '09:00',
-            'hora_fin' => '13:00',
-        ]);
+        $this->call(HorarioMedicoSeeder::class);
 
         // =========================
         // NOTIFICACIONES

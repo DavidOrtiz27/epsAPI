@@ -347,7 +347,6 @@ const AdminDoctorForm = ({ navigation, route }) => {
                   onPress={() => selectSpecialty(item)}
                 >
                   <Text style={styles.specialtyName}>{item.nombre}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#007AFF" />
                 </TouchableOpacity>
               )}
               ListEmptyComponent={

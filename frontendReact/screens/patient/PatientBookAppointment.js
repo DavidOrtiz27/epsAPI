@@ -7,21 +7,19 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
-  FlatList,
   Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
 import apiService from '../../services/api/api';
-import CustomButton from '../../components/ui/CustomButton';
 
-const PatientBookAppointment = () => {
+const PatientBookAppointment = ({ navigation }) => {
   const { user } = useAuth();
-  const navigation = useNavigation();
 
   const [specialties, setSpecialties] = useState([]);
+  const [filteredSpecialties, setFilteredSpecialties] = useState([]);
   const [selectedSpecialty, setSelectedSpecialty] = useState(null);
   const [specialtyModalVisible, setSpecialtyModalVisible] = useState(false);
   const [doctors, setDoctors] = useState([]);
@@ -32,6 +30,7 @@ const PatientBookAppointment = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     loadSpecialties();
@@ -45,6 +44,7 @@ const PatientBookAppointment = () => {
     try {
       const specialtiesData = await apiService.getSpecialties();
       setSpecialties(specialtiesData || []);
+      setFilteredSpecialties(specialtiesData || []);
     } catch (error) {
       console.error('Error loading specialties:', error);
       Alert.alert('Error', 'No se pudieron cargar las especialidades');
@@ -76,7 +76,10 @@ const PatientBookAppointment = () => {
     try {
       setLoading(true);
       const response = await apiService.getAvailableSlots(doctorId, date);
-      setAvailableSlots(response.available_slots || []);
+      // Remove duplicates and sort slots
+      const uniqueSlots = [...new Set(response.available_slots || [])].sort();
+      setAvailableSlots(uniqueSlots);
+      console.log('Available slots for', date, ':', uniqueSlots);
     } catch (error) {
       console.error('Error loading available slots:', error);
       setAvailableSlots([]);
@@ -121,15 +124,26 @@ const PatientBookAppointment = () => {
     try {
       setLoading(true);
       const appointmentData = {
+        paciente_id: user.paciente?.id,
         medico_id: selectedDoctor.id,
         fecha: `${selectedDate} ${selectedSlot}:00`,
         motivo: motivo.trim(),
       };
       await apiService.createAppointment(appointmentData);
+
+      // Clear all form state
+      setSelectedSpecialty(null);
+      setSelectedDoctor(null);
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setMotivo('');
+      setAvailableSlots([]);
+      setFilteredDoctors([]);
+
       Alert.alert(
         'Éxito',
         'Cita agendada correctamente. Espera la confirmación del médico.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ text: 'OK', onPress: () => navigation.navigate('PatientAppointments') }]
       );
     } catch (error) {
       console.error('Error booking appointment:', error);
@@ -138,6 +152,22 @@ const PatientBookAppointment = () => {
       setLoading(false);
     }
   };
+
+  const renderSelector = (field, label, placeholder, value, onPress, displayValue) => (
+    <View style={styles.inputContainer}>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity
+        style={[styles.selector, errors[field] && styles.selectorError]}
+        onPress={onPress}
+      >
+        <Text style={[styles.selectorText, !value && styles.selectorPlaceholder]}>
+          {displayValue || placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={20} color="#666" />
+      </TouchableOpacity>
+      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+    </View>
+  );
 
   const generateNextDates = () => {
     const dates = [];
@@ -166,7 +196,7 @@ const PatientBookAppointment = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('PatientAppointments')}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#333" />
@@ -175,6 +205,21 @@ const PatientBookAppointment = () => {
             <Text style={styles.headerTitle}>Solicitar Cita Médica</Text>
             <Text style={styles.headerSubtitle}>Proceso guiado en 5 pasos</Text>
           </View>
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert(
+                'Cancelar Solicitud',
+                '¿Estás seguro de que quieres salir sin agendar la cita?',
+                [
+                  { text: 'No, continuar', style: 'cancel' },
+                  { text: 'Sí, salir', style: 'destructive', onPress: () => navigation.navigate('PatientAppointments') }
+                ]
+              );
+            }}
+            style={styles.cancelButton}
+          >
+            <Ionicons name="close" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
 
         {/* Progress Indicator */}
@@ -233,30 +278,16 @@ const PatientBookAppointment = () => {
 
         {/* Step 1: Select Specialty */}
         <View style={styles.section}>
-          <View style={styles.stepHeader}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>1</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.sectionTitle}>
-                <Ionicons name="medical" size={20} color="#007AFF" /> Seleccionar
-                Especialidad
-              </Text>
-              <Text style={styles.stepDescription}>
-                Elige la especialidad médica que necesitas para tu consulta
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.sectionTitle}>Información Profesional</Text>
 
-          <TouchableOpacity
-            style={[styles.selector, !selectedSpecialty && styles.selectorPlaceholder]}
-            onPress={() => setSpecialtyModalVisible(true)}
-          >
-            <Text style={[styles.selectorText, !selectedSpecialty && styles.selectorPlaceholderText]}>
-              {selectedSpecialty ? selectedSpecialty.nombre : 'Seleccionar especialidad...'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
+          {renderSelector(
+            'especialidad',
+            'Especialidad Médica',
+            'Seleccionar especialidad...',
+            selectedSpecialty,
+            () => setSpecialtyModalVisible(true),
+            selectedSpecialty ? selectedSpecialty.nombre : null
+          )}
         </View>
 
         {/* Step 2: Select Doctor */}
@@ -278,11 +309,10 @@ const PatientBookAppointment = () => {
             </View>
 
             {filteredDoctors.length > 0 ? (
-              <FlatList
-                data={filteredDoctors}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
+              <View style={styles.doctorsList}>
+                {filteredDoctors.map((item) => (
                   <TouchableOpacity
+                    key={item.id.toString()}
                     style={[
                       styles.doctorCard,
                       selectedDoctor?.id === item.id && styles.doctorCardSelected,
@@ -298,8 +328,8 @@ const PatientBookAppointment = () => {
                       <Ionicons name="checkmark-circle" size={24} color="#007AFF" />
                     )}
                   </TouchableOpacity>
-                )}
-              />
+                ))}
+              </View>
             ) : (
               <Text style={styles.emptyText}>
                 No hay médicos disponibles para esta especialidad
@@ -454,50 +484,60 @@ const PatientBookAppointment = () => {
               </Text>
             </View>
 
-            <CustomButton
-              title="Agendar Cita"
-              onPress={handleBookAppointment}
-              loading={loading}
+            <TouchableOpacity
               style={styles.bookButton}
-            />
+              onPress={handleBookAppointment}
+            >
+              <Text style={styles.bookButtonText}>Agendar Cita</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
 
       {/* Specialty Selection Modal */}
-      <Modal
-        visible={specialtyModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setSpecialtyModalVisible(false)}
-      >
+      <Modal visible={specialtyModalVisible} animationType="slide" transparent={true} onRequestClose={() => setSpecialtyModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Seleccionar Especialidad</Text>
-              <TouchableOpacity
-                onPress={() => setSpecialtyModalVisible(false)}
-                style={styles.modalCloseButton}
-              >
+              <TouchableOpacity onPress={() => setSpecialtyModalVisible(false)} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
+            {/* Search Input */}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar especialidad..."
+              placeholderTextColor="#999"
+              onChangeText={text => {
+                if (!text.trim()) {
+                  setFilteredSpecialties(specialties);
+                } else {
+                  setFilteredSpecialties(
+                    specialties.filter(s => s.nombre.toLowerCase().includes(text.toLowerCase())),
+                  );
+                }
+              }}
+            />
+
+            {/* Lista de especialidades */}
             <FlatList
-              data={specialties}
-              keyExtractor={(item) => item.id.toString()}
+              data={filteredSpecialties}
+              keyExtractor={item => item.id.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.modalItem}
+                  style={[
+                    styles.modalItem,
+                    selectedSpecialty?.id === item.id && { backgroundColor: '#f0f8ff' },
+                  ]}
                   onPress={() => handleSpecialtySelect(item)}
                 >
+                  <Ionicons name="medkit-outline" size={20} color="#007AFF" style={{ marginRight: 10 }} />
                   <Text style={styles.specialtyName}>{item.nombre}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#007AFF" />
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>No hay especialidades disponibles</Text>
-              }
+              ListEmptyComponent={<Text style={styles.emptyText}>No se encontraron especialidades</Text>}
             />
           </View>
         </View>
@@ -519,6 +559,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
   },
   backButton: { padding: 8 },
+  cancelButton: { padding: 8 },
   headerContent: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   headerSubtitle: { fontSize: 14, color: '#666' },
@@ -560,38 +601,26 @@ const styles = StyleSheet.create({
   stepNumberText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   stepContent: { flex: 1 },
   section: {
-    marginHorizontal: 16,
-    marginVertical: 8,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
   },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  stepDescription: { fontSize: 14, color: '#666', marginTop: 4 },
-  selector: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  selectorPlaceholder: {
-    borderColor: '#ddd',
-  },
-  selectorText: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
-    flex: 1,
+    marginBottom: 16,
   },
-  selectorPlaceholderText: {
-    color: '#999',
-  },
+  stepDescription: { fontSize: 14, color: '#666', marginTop: 4 },
   // Modal styles
   modalOverlay: {
     flex: 1,
@@ -621,17 +650,67 @@ const styles = StyleSheet.create({
   modalCloseButton: {
     padding: 4,
   },
+  searchInput: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    borderRadius: 8,
+    marginHorizontal: 12,
+    marginVertical: 4,
   },
   specialtyName: {
     fontSize: 16,
     color: '#333',
     flex: 1,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  selector: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectorError: {
+    borderColor: '#FF3B30',
+  },
+  selectorText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  selectorPlaceholder: {
+    color: '#999',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    marginTop: 4,
   },
   emptyText: {
     textAlign: 'center',
@@ -640,6 +719,9 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   // Doctor selection styles
+  doctorsList: {
+    maxHeight: 300, // Limit height to prevent excessive scrolling
+  },
   doctorCard: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
@@ -788,7 +870,16 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   bookButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
     marginTop: 10,
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

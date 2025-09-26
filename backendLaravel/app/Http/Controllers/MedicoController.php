@@ -56,8 +56,6 @@ class MedicoController extends Controller
      */
     public function show(string $id)
     {
-        $medico = Medico::with(['user', 'especialidades', 'horariosMedicos'])->findOrFail($id);
-
         $user = Auth::user()->load('medico'); // Load medico relationship
 
         // Check if user has permission to view detailed doctor info
@@ -66,6 +64,9 @@ class MedicoController extends Controller
             (!$user->paciente)) {
             // Return limited info for regular patients
             $medico = Medico::with(['user:id,name,email', 'especialidades'])->findOrFail($id);
+        } else {
+            // Return full info for admins and doctors viewing their own profile
+            $medico = Medico::with(['user', 'especialidades', 'horariosMedicos', 'citas.paciente.user'])->findOrFail($id);
         }
 
         return response()->json($medico);

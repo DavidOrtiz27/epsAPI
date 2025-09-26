@@ -43,7 +43,6 @@ const DoctorPatients = () => {
           <Text style={styles.patientName}>{patient.user?.name || 'Paciente'}</Text>
           <Text style={styles.patientDocument}>Documento: {patient.documento}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
       </View>
 
       {patient.telefono && (

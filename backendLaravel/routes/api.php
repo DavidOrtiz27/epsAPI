@@ -33,9 +33,6 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Medications - allow authenticated users to view (will be filtered by MedicamentoController)
-    Route::get('/medicamentos', [MedicamentoController::class, 'index']);
-
     // User info
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -83,7 +80,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Doctor schedules
         Route::apiResource('/medicos/horarios', HorarioMedicoController::class);
-        Route::get('/medicos/{medicoId}/horarios/disponibles', [HorarioMedicoController::class, 'availableSlots']);
     });
 
     // ==========================================
@@ -152,6 +148,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Any authenticated user can view specialties and doctors
     Route::get('/especialidades', [EspecialidadController::class, 'index']);
     Route::get('/medicos', [MedicoController::class, 'index']);
+
+    // Any authenticated user can view available doctor slots (for appointment booking)
+    Route::get('/medicos/{medicoId}/horarios/disponibles', [HorarioMedicoController::class, 'availableSlots']);
+
+    // Doctors and admins can view medications
+    Route::get('/medicamentos', [MedicamentoController::class, 'index']);
 
     // Doctors and admins can view medications
     Route::middleware('role:doctor,admin,superadmin')->group(function () {

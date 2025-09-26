@@ -1019,9 +1019,9 @@ const DoctorAppointmentDetail = () => {
         onRequestClose={() => setShowTreatmentPrescriptionModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, styles.largeModalContent]}>
             <Text style={styles.modalTitle}>Tratamiento y Receta Médica</Text>
-            <ScrollView style={styles.formContainer}>
+            <ScrollView style={[styles.formContainer, styles.largeFormContainer]}>
               {/* Treatment Section */}
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitleText}>Tratamiento</Text>
@@ -1430,10 +1430,10 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -1490,10 +1490,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   patientHeader: {
     flexDirection: 'row',
@@ -1541,10 +1541,10 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   recordDate: {
     fontSize: 14,
@@ -1587,7 +1587,16 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '90%',
     maxHeight: '90%',
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  largeModalContent: {
+    width: '98%',
+    maxHeight: '95%',
+    padding: 28,
   },
   modalTitle: {
     fontSize: 20,
@@ -1598,6 +1607,9 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     maxHeight: 400,
+  },
+  largeFormContainer: {
+    maxHeight: 700,
   },
   label: {
     fontSize: 16,
@@ -1661,7 +1673,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     maxHeight: '70%',
     width: '90%',
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   searchInput: {
     borderWidth: 1,

@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Error checking auth state:', error);
+      // Silently handle auth state check errors
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +74,6 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setToken(null);
     } catch (error) {
-      console.error('Logout error:', error);
       // Even if API call fails, clear local state
       setUser(null);
       setToken(null);
@@ -87,7 +86,7 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
     } catch (error) {
-      console.error('Error updating user:', error);
+      // Silently handle user update errors
     }
   };
 

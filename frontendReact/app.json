@@ -1,29 +1,29 @@
 {
   "expo": {
-    "name": "frontendReact",
-    "slug": "frontendReact",
+    "name": "MAPU",
+    "slug": "mapu-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/mapu.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/mapu.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#007AFF"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/mapu.png",
+        "backgroundColor": "#007AFF"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/mapu.png"
     }
   }
 }
