@@ -315,4 +315,89 @@ class AdminController extends Controller
             'usuarios_activos' => User::where('updated_at', '>=', now()->subDays(30))->count(),
         ];
     }
+
+    /**
+     * Get all users (superadmin only)
+     */
+    public function getUsers(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->hasRole('superadmin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $users = User::with('roles')->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Update user roles (superadmin only)
+     */
+    public function updateUserRoles(Request $request, $userId)
+    {
+        $user = $request->user();
+
+        if (!$user->hasRole('superadmin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'roles' => 'required|array',
+            'roles.*' => 'string|in:superadmin,admin,doctor,paciente',
+        ]);
+
+        $targetUser = User::findOrFail($userId);
+
+        // Remove all existing roles
+        $targetUser->roles()->detach();
+
+        // Assign new roles
+        foreach ($request->roles as $roleName) {
+            $role = \App\Models\Role::where('name', $roleName)->first();
+            if ($role) {
+                $targetUser->roles()->attach($role);
+            }
+        }
+
+        // Log the role change
+        \App\Models\Auditoria::create([
+            'user_id' => $user->id,
+            'accion' => 'Actualización de roles',
+            'descripcion' => "Roles actualizados para usuario {$targetUser->name}: " . implode(', ', $request->roles),
+        ]);
+
+        return response()->json(['message' => 'Roles actualizados correctamente']);
+    }
+
+    /**
+     * Delete user (superadmin only)
+     */
+    public function deleteUser(Request $request, $userId)
+    {
+        $user = $request->user();
+
+        if (!$user->hasRole('superadmin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $targetUser = User::findOrFail($userId);
+
+        // Prevent deleting the current superadmin user
+        if ($targetUser->id === $user->id) {
+            return response()->json(['message' => 'No puedes eliminar tu propia cuenta'], 400);
+        }
+
+        // Log the deletion
+        \App\Models\Auditoria::create([
+            'user_id' => $user->id,
+            'accion' => 'Eliminación de usuario',
+            'descripcion' => "Usuario eliminado: {$targetUser->name} ({$targetUser->email})",
+        ]);
+
+        $targetUser->delete();
+
+        return response()->json(['message' => 'Usuario eliminado correctamente']);
+    }
 }

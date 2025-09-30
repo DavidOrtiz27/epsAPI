@@ -110,19 +110,19 @@ const AdminDashboard = ({ navigation }) => {
   const handleQuickAction = async (action) => {
     switch (action) {
       case 'Gestionar Pacientes':
-        navigation.navigate('AdminPatients');
+        navigation.navigate('Pacientes');
         break;
       case 'Gestionar Doctores':
-        navigation.navigate('AdminDoctors');
+        navigation.navigate('Doctores');
         break;
       case 'Ver Citas':
-        navigation.navigate('AdminAppointments');
+        navigation.navigate('Citas');
         break;
       case 'Reportes':
-        navigation.navigate('AdminReports');
+        navigation.navigate('Reportes');
         break;
       case 'Medicamentos':
-        navigation.navigate('AdminMedications');
+        navigation.navigate('Medicamentos');
         break;
       default:
         Alert.alert('Funcionalidad en desarrollo', `La acción "${action}" estará disponible próximamente.`);

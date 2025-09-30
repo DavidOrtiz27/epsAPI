@@ -7,9 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 import CustomButton from '../../components/ui/CustomButton';
@@ -19,22 +21,35 @@ const PatientDashboard = () => {
   const navigation = useNavigation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // Removed modal form state and dropdown states - now using PatientBookAppointment screen
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDashboardData();
+    }, [])
+  );
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      }
       const appointmentsData = await apiService.getPatientAppointments();
       setAppointments(appointmentsData || []);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos del dashboard');
+      if (!isRefreshing) {
+        Alert.alert('Error', 'No se pudieron cargar los datos del dashboard');
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadDashboardData(true);
   };
 
   // Removed modal-related functions - now using PatientBookAppointment screen
@@ -127,10 +142,16 @@ const PatientDashboard = () => {
     }
   };
 
-  const upcomingAppointments = appointments.filter(apt =>
-    new Date(apt.fecha) >= new Date() && apt.estado?.toLowerCase() !== 'cancelada'
-  );
+  {/*filter of next appointments*/}
+  const upcomingAppointments = appointments.filter(apt => {
+    const appointmentDate = new Date(apt.fecha);
+    const now = new Date();
+    const isFuture = appointmentDate >= now;
+    const isActive = apt.estado?.toLowerCase() !== 'cancelada' && apt.estado?.toLowerCase() !== 'realizada';
+    return isFuture && isActive;
+  });
 
+  // Recent appointments (past appointments)
   const recentAppointments = appointments.filter(apt =>
     new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
   ).slice(0, 3);
@@ -138,7 +159,18 @@ const PatientDashboard = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.welcomeContainer}>

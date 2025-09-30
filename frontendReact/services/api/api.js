@@ -6,7 +6,8 @@ import { Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (Platform.OS === 'android') {
     // Para teléfono físico Android, usar IP real de la máquina
-    return 'http://10.2.234.89:8000/api';
+    return 'http://192.168.1.12:8000/api';
+    //return 'http://10.2.234.89:8000/api';
   }
   // Para iOS simulator o desarrollo web
   return 'http://localhost:8000/api';
@@ -154,6 +155,20 @@ class ApiService {
     return await this.request('/auth/me');
   }
 
+  async updateEmail(emailData) {
+    return await this.request('/auth/email', {
+      method: 'PUT',
+      body: JSON.stringify(emailData),
+    });
+  }
+
+  async updatePassword(passwordData) {
+    return await this.request('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify(passwordData),
+    });
+  }
+
   async isAuthenticated() {
     const token = await this.getToken();
     return !!token;
@@ -182,7 +197,172 @@ class ApiService {
   }
 
   async getPatientHistory() {
-    return await this.request('/pacientes/historial');
+    try {
+      // Obtener registros del historial clínico (diagnósticos, tratamientos)
+      const clinicalHistory = await this.request('/pacientes/historial');
+
+      // Validar que clinicalHistory sea un array
+      if (!Array.isArray(clinicalHistory)) {
+        console.error('Clinical history is not an array:', clinicalHistory);
+        // Retornar citas del historial como fallback
+        const appointments = await this.getPatientAppointments();
+        if (!Array.isArray(appointments)) return [];
+        return appointments.filter(apt => {
+          if (!apt || !apt.id) return false;
+          const appointmentDate = new Date(apt.fecha);
+          const now = new Date();
+          const isPast = appointmentDate < now;
+          const isCompleted = apt.estado?.toLowerCase() === 'realizada' || apt.estado?.toLowerCase() === 'cancelada';
+          return isPast || isCompleted;
+        }).map(appointment => ({
+          id: appointment.id,
+          fecha: appointment.fecha,
+          created_at: appointment.created_at,
+          cita: {
+            id: appointment.id,
+            fecha: appointment.fecha,
+            estado: appointment.estado,
+            motivo: appointment.motivo,
+            medico: appointment.medico ? {
+              id: appointment.medico.id,
+              name: appointment.medico.user?.name || 'Médico asignado'
+            } : null
+          },
+          diagnostico: null,
+          tratamientos: []
+        }));
+      }
+
+      // Debug: mostrar qué tratamientos se están cargando
+      if (__DEV__) {
+        console.log('Clinical History from backend:', clinicalHistory);
+        clinicalHistory.forEach((record, index) => {
+          console.log(`Record ${index}: ID=${record.id}, Cita=${record.cita?.id || 'null'}, Tratamientos=${record.tratamientos?.length || 0}`, {
+            diagnostico: record.diagnostico,
+            tratamientos: record.tratamientos
+          });
+        });
+      }
+
+      // Obtener todas las citas para incluir las que no tienen historial clínico
+      const appointments = await this.getPatientAppointments();
+
+      // Validar que appointments sea un array
+      if (!Array.isArray(appointments)) {
+        console.error('Appointments is not an array:', appointments);
+        return clinicalHistory; // Retornar solo el historial clínico si hay error
+      }
+
+      // Crear mapa de registros clínicos por cita_id ANTES del filtro
+      const clinicalMap = {};
+      clinicalHistory.forEach(record => {
+        if (record && record.cita && record.cita.id) {
+          clinicalMap[record.cita.id] = record;
+        } else if (__DEV__ && record) {
+          console.log('Clinical record without cita or invalid cita:', record);
+        }
+      });
+
+      // Debug: verificar clinicalMap
+      if (__DEV__) {
+        console.log('Clinical Map created:', Object.keys(clinicalMap));
+      }
+
+      // Filtrar citas del historial (pasadas, canceladas, realizadas)
+      // IMPORTANTE: Incluir TODAS las citas que tienen historial clínico, sin importar fecha/estado
+      const pastAppointments = appointments.filter(apt => {
+        if (!apt || !apt.id) return false; // Validar que la cita existe
+
+        const appointmentDate = new Date(apt.fecha);
+        const now = new Date();
+        const isPast = appointmentDate < now;
+        const isCompleted = apt.estado?.toLowerCase() === 'realizada' || apt.estado?.toLowerCase() === 'cancelada';
+        const hasClinicalRecord = clinicalMap[apt.id]; // Si tiene historial clínico, incluirla
+
+        return isPast || isCompleted || hasClinicalRecord;
+      });
+
+      // Combinar información: registros clínicos completos + citas sin historial clínico
+      const combinedHistory = [];
+
+      // Primero agregar todos los registros clínicos (que tienen info completa)
+      clinicalHistory.forEach(record => {
+        if (record && record.id) {
+          combinedHistory.push({
+            ...record,
+            _type: 'clinical', // Marcar como registro clínico
+            _uniqueKey: `clinical-${record.id}` // Key única para React
+          });
+        }
+      });
+
+      // Luego agregar citas que NO tienen historial clínico
+      pastAppointments.forEach(appointment => {
+        if (appointment && appointment.id) {
+          const hasClinicalRecord = clinicalMap[appointment.id];
+          if (!hasClinicalRecord) {
+            // Crear entrada básica para cita sin historial clínico
+            // NOTA: Las citas sin historial clínico no tienen tratamientos asociados
+            combinedHistory.push({
+              id: appointment.id,
+              fecha: appointment.fecha,
+              created_at: appointment.created_at,
+              cita: {
+                id: appointment.id,
+                fecha: appointment.fecha,
+                estado: appointment.estado,
+                motivo: appointment.motivo,
+                medico: appointment.medico ? {
+                  id: appointment.medico.id,
+                  name: appointment.medico.user?.name || 'Médico asignado'
+                } : null
+              },
+              diagnostico: null,
+              tratamientos: [], // Citas sin historial clínico no tienen tratamientos
+              _type: 'appointment', // Marcar como cita básica
+              _uniqueKey: `appointment-${appointment.id}` // Key única para React
+            });
+          }
+        }
+      });
+
+      // Ordenar por fecha (más reciente primero)
+      return combinedHistory
+        .filter(item => item && item.fecha) // Filtrar items válidos con fecha
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+    } catch (error) {
+      console.error('Error getting patient history:', error);
+      // Fallback: devolver al menos las citas del historial
+      const appointments = await this.getPatientAppointments();
+      const pastAppointments = appointments.filter(apt => {
+        const appointmentDate = new Date(apt.fecha);
+        const now = new Date();
+        const isPast = appointmentDate < now;
+        const isCompleted = apt.estado?.toLowerCase() === 'realizada' || apt.estado?.toLowerCase() === 'cancelada';
+        return isPast || isCompleted;
+      });
+
+      return pastAppointments.filter(apt => apt && apt.id).map(appointment => ({
+        id: appointment.id,
+        fecha: appointment.fecha,
+        created_at: appointment.created_at,
+        cita: {
+          id: appointment.id,
+          fecha: appointment.fecha,
+          estado: appointment.estado,
+          motivo: appointment.motivo,
+          medico: appointment.medico ? {
+            id: appointment.medico.id,
+            name: appointment.medico.user?.name || 'Médico asignado'
+          } : null
+        },
+        diagnostico: null,
+        tratamientos: [],
+        _type: 'appointment-fallback',
+        _uniqueKey: `appointment-fallback-${appointment.id}`
+      }));
+    }
   }
 
   async getPatientInvoices() {

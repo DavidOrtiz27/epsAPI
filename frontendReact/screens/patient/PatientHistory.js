@@ -6,8 +6,10 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 
@@ -15,88 +17,148 @@ const PatientHistory = () => {
   const { user, logout } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadHistory();
+    }, [])
+  );
 
-  const loadHistory = async () => {
+  const loadHistory = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      }
       const historyData = await apiService.getPatientHistory();
       setHistory(historyData || []);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const HistoryCard = ({ record }) => (
-    <View style={styles.historyCard}>
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyDate}>
-          {new Date(record.fecha || record.created_at).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </Text>
-        <View style={styles.recordType}>
-          <Ionicons name="document-text-outline" size={16} color="#007AFF" />
-          <Text style={styles.recordTypeText}>Registro Médico</Text>
-        </View>
-      </View>
+  const onRefresh = () => {
+    loadHistory(true);
+  };
 
-      <Text style={styles.diagnosis}>{record.diagnostico || 'Diagnóstico no especificado'}</Text>
+  const HistoryCard = ({ record }) => {
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    };
 
-      {record.observaciones && (
-        <Text style={styles.observations}>{record.observaciones}</Text>
-      )}
+    const getStatusStyle = (status) => {
+      switch (status?.toLowerCase()) {
+        case 'confirmada':
+          return styles.statusConfirmed;
+        case 'cancelada':
+          return styles.statusCancelled;
+        case 'realizada':
+          return styles.statusCompleted;
+        default:
+          return styles.statusPending;
+      }
+    };
 
-      {record.medico && (
-        <View style={styles.doctorInfo}>
-          <Ionicons name="medical" size={16} color="#666" />
-          <Text style={styles.doctorName}>
-            Dr. {record.medico.user?.name || 'Médico tratante'}
+    const getStatusText = (status) => {
+      switch (status?.toLowerCase()) {
+        case 'confirmada':
+          return 'Confirmada';
+        case 'cancelada':
+          return 'Cancelada';
+        case 'realizada':
+          return 'Realizada';
+        default:
+          return 'Pendiente';
+      }
+    };
+
+    return (
+      <View style={styles.historyCard}>
+        <View style={styles.appointmentHeader}>
+          <Text style={styles.appointmentDate}>
+            {record.cita && record.cita.fecha ? formatDate(record.cita.fecha) : formatDate(record.fecha || record.created_at)}
           </Text>
+          <View style={styles.recordType}>
+            <Ionicons name={record.cita ? "medical" : "document-text-outline"} size={16} color="#007AFF" />
+            <Text style={styles.recordTypeText}>
+              {record.cita ? "Consulta" : "Registro"}
+            </Text>
+          </View>
         </View>
-      )}
 
-      {record.tratamientos && record.tratamientos.length > 0 && (
-        <View style={styles.treatmentsSection}>
-          <Text style={styles.sectionTitle}>Tratamientos:</Text>
-          {record.tratamientos.map((tratamiento, index) => (
-            <View key={index} style={styles.treatmentItem}>
-              <Text style={styles.treatmentText}>• {tratamiento.descripcion}</Text>
-              {tratamiento.fecha_inicio && (
-                <Text style={styles.treatmentDate}>
-                  Inicio: {new Date(tratamiento.fecha_inicio).toLocaleDateString('es-ES')}
-                </Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
+        {/* Estado de la cita */}
+        {record.cita && record.cita.estado && (
+          <View style={[styles.statusBadge, getStatusStyle(record.cita.estado)]}>
+            <Text style={styles.statusText}>{getStatusText(record.cita.estado)}</Text>
+          </View>
+        )}
 
-      {record.examenes && record.examenes.length > 0 && (
-        <View style={styles.examsSection}>
-          <Text style={styles.sectionTitle}>Exámenes:</Text>
-          {record.examenes.map((examen, index) => (
-            <View key={index} style={styles.examItem}>
-              <Text style={styles.examText}>• {examen.tipo || 'Examen médico'}</Text>
-              {examen.resultado && (
-                <Text style={styles.examResult}>{examen.resultado}</Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
+        {/* Información del médico */}
+        {record.cita && record.cita.medico && record.cita.medico.name && (
+          <Text style={styles.appointmentDoctor}>
+            Dr. {record.cita.medico.name}
+          </Text>
+        )}
+
+        {/* Motivo de la cita */}
+        {record.cita && record.cita.motivo && (
+          <Text style={styles.appointmentMotivo}>{record.cita.motivo}</Text>
+        )}
+
+        {/* Diagnóstico */}
+        {record.diagnostico && (
+          <View style={styles.diagnosisSection}>
+            <Text style={styles.sectionTitle}>Diagnóstico</Text>
+            <Text style={styles.diagnosis}>{record.diagnostico}</Text>
+          </View>
+        )}
+
+        {/* Tratamientos */}
+        {record.tratamientos && Array.isArray(record.tratamientos) && record.tratamientos.length > 0 && (
+          <View style={styles.treatmentsSection}>
+            <Text style={styles.sectionTitle}>Tratamientos</Text>
+            {record.tratamientos
+              .filter(tratamiento => tratamiento && tratamiento.descripcion)
+              .map((tratamiento, index) => (
+                <View key={`treatment-${tratamiento.id || index}`} style={styles.treatmentItem}>
+                  <Text style={styles.treatmentText}>• {tratamiento.descripcion}</Text>
+                  {tratamiento.fecha_inicio && (
+                    <Text style={styles.treatmentDate}>
+                      {formatDate(tratamiento.fecha_inicio)}
+                      {tratamiento.fecha_fin && ` - ${formatDate(tratamiento.fecha_fin)}`}
+                    </Text>
+                  )}
+                </View>
+              ))}
+          </View>
+        )}
+
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.welcomeContainer}>
@@ -110,17 +172,17 @@ const PatientHistory = () => {
 
         {/* Medical History */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Registros Médicos ({history.length})</Text>
+          <Text style={styles.sectionTitle}>Mis Consultas Médicas ({history.length})</Text>
           {history.length > 0 ? (
             history.map((record) => (
-              <HistoryCard key={record.id} record={record} />
+              <HistoryCard key={record._uniqueKey || record.id} record={record} />
             ))
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="document-text-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No hay registros médicos</Text>
+              <Text style={styles.emptyStateText}>No hay consultas registradas</Text>
               <Text style={styles.emptyStateSubtext}>
-                Tus registros médicos aparecerán aquí una vez que visites a un médico
+                Tus consultas médicas aparecerán aquí una vez que visites a un médico
               </Text>
             </View>
           )}
@@ -141,11 +203,19 @@ const PatientHistory = () => {
               </Text>
               <Text style={styles.summaryLabel}>Tratamientos</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryNumber}>
-                {history.filter(h => h.examenes && h.examenes.length > 0).length}
+          </View>
+        </View>
+
+        {/* Important Information */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Información Importante</Text>
+              <Text style={styles.infoText}>
+                Esta información es para referencia general. Para cualquier duda sobre su salud,
+                tratamientos o resultados, consulte siempre con su médico tratante.
               </Text>
-              <Text style={styles.summaryLabel}>Exámenes</Text>
             </View>
           </View>
         </View>
@@ -211,13 +281,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  historyHeader: {
+  appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  historyDate: {
+  appointmentDate: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
@@ -236,39 +306,56 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
-  diagnosis: {
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  statusPending: {
+    backgroundColor: '#FF9500',
+  },
+  statusConfirmed: {
+    backgroundColor: '#34C759',
+  },
+  statusCancelled: {
+    backgroundColor: '#FF3B30',
+  },
+  statusCompleted: {
+    backgroundColor: '#007AFF',
+  },
+  appointmentDoctor: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  appointmentMotivo: {
     fontSize: 16,
     color: '#333',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  observations: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  doctorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 12,
   },
-  doctorName: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
+  diagnosisSection: {
+    marginBottom: 12,
   },
   treatmentsSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  diagnosis: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
   },
   treatmentItem: {
     marginBottom: 8,
@@ -281,25 +368,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
-  },
-  examsSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  examItem: {
-    marginBottom: 8,
-  },
-  examText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  examResult: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-    fontStyle: 'italic',
   },
   summarySection: {
     paddingHorizontal: 24,
@@ -354,6 +422,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-});
+  // Important Information styles
+  infoSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: 40,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#e8f4fd',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  infoContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  });
 
 export default PatientHistory;

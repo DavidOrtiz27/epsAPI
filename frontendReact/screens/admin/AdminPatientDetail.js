@@ -138,12 +138,6 @@ const AdminPatientDetail = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {patient.user?.name || 'Paciente'}
         </Text>
@@ -270,16 +264,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e6e6e6',
     elevation: 3,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,

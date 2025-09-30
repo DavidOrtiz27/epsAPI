@@ -10,3 +10,6 @@ export { default as AdminMedications } from './AdminMedications';
 export { default as AdminMedicationForm } from './AdminMedicationForm';
 export { default as AdminAppointments } from './AdminAppointments';
 export { default as AdminReports } from './AdminReports';
+export { default as AdminAudits } from './AdminAudits';
+export { default as AdminUsers } from './AdminUsers';
+export { default as AdminProfile } from './AdminProfile';

@@ -105,6 +105,75 @@ class AuthController extends Controller
     }
 
     /**
+     * Update user email
+     */
+    public function updateEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email|max:255|unique:users,email,' . $request->user()->id,
+            'password' => 'required|string', // Current password confirmation
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+
+        // Verify current password
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Contraseña actual incorrecta'], 422);
+        }
+
+        $user->update(['email' => $request->email]);
+
+        // Log the email change
+        \App\Models\Auditoria::create([
+            'user_id' => $user->id,
+            'accion' => 'Cambio de email',
+            'descripcion' => "Email cambiado de {$user->getOriginal('email')} a {$request->email}",
+        ]);
+
+        return response()->json([
+            'message' => 'Email actualizado correctamente',
+            'user' => $user->load('roles')
+        ]);
+    }
+
+    /**
+     * Update user password
+     */
+    public function updatePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+
+        // Verify current password
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Contraseña actual incorrecta'], 422);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        // Log the password change
+        \App\Models\Auditoria::create([
+            'user_id' => $user->id,
+            'accion' => 'Cambio de contraseña',
+            'descripcion' => 'Contraseña actualizada',
+        ]);
+
+        return response()->json(['message' => 'Contraseña actualizada correctamente']);
+    }
+
+    /**
      * Create a new doctor (only for admins and superadmins)
      */
     public function createDoctor(Request $request)

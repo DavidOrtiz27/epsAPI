@@ -7,19 +7,7 @@ import { useAuth } from '../../utils/context/AuthContext';
 import { LoginScreen, RegisterScreen } from '../../screens/auth';
 import PatientTabs from '../patient/PatientTabs';
 import DoctorTabs from '../doctor/DoctorTabs';
-import {
-  AdminDashboard,
-  AdminPatients,
-  AdminPatientDetail,
-  AdminPatientForm,
-  AdminDoctors,
-  AdminDoctorDetail,
-  AdminDoctorForm,
-  AdminMedications,
-  AdminMedicationForm,
-  AdminAppointments,
-  AdminReports
-} from '../../screens/admin';
+import AdminTabs from '../admin/AdminTabs';
 
 const Stack = createStackNavigator();
 
@@ -88,87 +76,13 @@ const AppNavigator = () => {
 
             {/* Admin screens */}
             {user?.roles?.some(role => role.name === 'admin') && (
-              <>
-                <Stack.Screen
-                  name="AdminDashboard"
-                  component={AdminDashboard}
-                  options={{
-                    title: 'Panel Administrativo',
-                    headerLeft: null,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminPatients"
-                  component={AdminPatients}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminPatientDetail"
-                  component={AdminPatientDetail}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminPatientForm"
-                  component={AdminPatientForm}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminDoctors"
-                  component={AdminDoctors}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminDoctorDetail"
-                  component={AdminDoctorDetail}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminDoctorForm"
-                  component={AdminDoctorForm}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminMedications"
-                  component={AdminMedications}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminMedicationForm"
-                  component={AdminMedicationForm}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminAppointments"
-                  component={AdminAppointments}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="AdminReports"
-                  component={AdminReports}
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-
-              </>
+              <Stack.Screen
+                name="AdminTabs"
+                component={AdminTabs}
+                options={{
+                  headerShown: false, // Bottom tabs will handle their own headers
+                }}
+              />
             )}
           </>
         )}

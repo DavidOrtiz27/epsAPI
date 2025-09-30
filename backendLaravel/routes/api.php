@@ -36,6 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // User info
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::put('/auth/email', [AuthController::class, 'updateEmail']);
+    Route::put('/auth/password', [AuthController::class, 'updatePassword']);
 
     // ==========================================
     // PATIENT ROUTES (paciente role)
@@ -136,6 +138,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/create-doctor', [AuthController::class, 'createDoctor']);
     });
 
+
+    // ==========================================
+    // SUPERADMIN ROUTES (superadmin role only)
+    // ==========================================
+
+    Route::middleware('role:superadmin')->group(function () {
+        // User management
+        Route::get('/admin/users', [AdminController::class, 'getUsers']);
+        Route::put('/admin/users/{id}/roles', [AdminController::class, 'updateUserRoles']);
+        Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
+
+        // Audit logs
+        Route::get('/auditorias', [AuditoriaController::class, 'index']);
+    });
 
     // ==========================================
     // SHARED ROUTES (Multiple roles can access)

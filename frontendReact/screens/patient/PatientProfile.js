@@ -7,9 +7,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
+  Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 import CustomInput from '../../components/ui/CustomInput';
@@ -17,13 +20,25 @@ import CustomButton from '../../components/ui/CustomButton';
 
 const PatientProfile = () => {
   const { user, logout, updateUser } = useAuth();
+  const navigation = useNavigation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [formData, setFormData] = useState({
+    documento: '',
     telefono: '',
     direccion: '',
+    fecha_nacimiento: '',
+    genero: '',
+  });
+  const [securityFormData, setSecurityFormData] = useState({
+    newEmail: '',
+    currentPassword: '',
+    newPassword: '',
+    newPassword_confirmation: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -52,10 +67,13 @@ const PatientProfile = () => {
     try {
       const profileData = await apiService.getPatientProfile();
       setProfile(profileData);
-      // Initialize form data with only editable fields
+      // Initialize form data with all editable fields
       setFormData({
+        documento: profileData?.documento || '',
         telefono: profileData?.telefono || '',
         direccion: profileData?.direccion || '',
+        fecha_nacimiento: profileData?.fecha_nacimiento ? profileData.fecha_nacimiento.split('T')[0] : '',
+        genero: profileData?.genero || '',
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -75,9 +93,35 @@ const PatientProfile = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Only validate editable fields
+    // Validate documento
+    if (formData.documento && !/^[A-Za-z0-9\-]+$/.test(formData.documento)) {
+      newErrors.documento = 'Formato de documento inválido';
+    }
+
+    // Validate telefono
     if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
       newErrors.telefono = 'Formato de teléfono inválido';
+    }
+
+    // Validate fecha_nacimiento
+    if (formData.fecha_nacimiento) {
+      const date = new Date(formData.fecha_nacimiento);
+      if (isNaN(date.getTime())) {
+        newErrors.fecha_nacimiento = 'Fecha inválida';
+      } else {
+        const today = new Date();
+        const minAge = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+        if (date > today) {
+          newErrors.fecha_nacimiento = 'La fecha no puede ser futura';
+        } else if (date > minAge) {
+          newErrors.fecha_nacimiento = 'Debes tener al menos 18 años';
+        }
+      }
+    }
+
+    // Validate genero
+    if (formData.genero && !['M', 'F', 'O'].includes(formData.genero)) {
+      newErrors.genero = 'Género inválido';
     }
 
     setErrors(newErrors);
@@ -102,7 +146,7 @@ const PatientProfile = () => {
 
       await apiService.updatePatientProfile(updateData);
       await loadProfile(); // Reload profile data
-      setEditing(false);
+      setShowEditModal(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -113,42 +157,103 @@ const PatientProfile = () => {
   };
 
   const handleCancel = () => {
-    // Reset form data to original values (only editable fields)
+    // Reset form data to original values
     if (profile) {
       setFormData({
+        documento: profile.documento || '',
         telefono: profile.telefono || '',
         direccion: profile.direccion || '',
+        fecha_nacimiento: profile.fecha_nacimiento ? profile.fecha_nacimiento.split('T')[0] : '',
+        genero: profile.genero || '',
       });
     }
     setErrors({});
-    setEditing(false);
+    setShowEditModal(false);
   };
 
-  const ProfileItem = ({ icon, label, value, editable = false, field }) => (
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      const formattedDate = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      updateFormData('fecha_nacimiento', formattedDate);
+    }
+  };
+
+  const openDatePicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const updateSecurityFormData = (field, value) => {
+    setSecurityFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!securityFormData.newEmail || !securityFormData.currentPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    try {
+      await apiService.updateEmail({
+        email: securityFormData.newEmail,
+        password: securityFormData.currentPassword,
+      });
+
+      // Update user context with new email
+      const updatedUser = { ...user, email: securityFormData.newEmail };
+      updateUser(updatedUser);
+
+      setSecurityFormData(prev => ({ ...prev, newEmail: '', currentPassword: '' }));
+      setShowSecurityModal(false);
+      Alert.alert('Éxito', 'Email actualizado correctamente');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar el email');
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!securityFormData.currentPassword || !securityFormData.newPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    if (securityFormData.newPassword !== securityFormData.newPassword_confirmation) {
+      Alert.alert('Error', 'Las contraseñas nuevas no coinciden');
+      return;
+    }
+
+    try {
+      await apiService.updatePassword({
+        current_password: securityFormData.currentPassword,
+        password: securityFormData.newPassword,
+        password_confirmation: securityFormData.newPassword_confirmation,
+      });
+
+      setSecurityFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        newPassword_confirmation: ''
+      }));
+      setShowSecurityModal(false);
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+    }
+  };
+
+  const ProfileItem = ({ icon, label, value }) => (
     <View style={styles.profileItem}>
       <View style={styles.profileItemLeft}>
         <Ionicons name={icon} size={20} color="#666" />
         <Text style={styles.profileItemLabel}>{label}</Text>
       </View>
-      {editing && editable ? (
-        <View style={styles.editContainer}>
-          <TextInput
-            style={[styles.editInput, errors[field] && styles.editInputError]}
-            value={formData[field]}
-            onChangeText={(value) => updateFormData(field, value)}
-            placeholder={`Ingresa ${label.toLowerCase()}`}
-            keyboardType={field === 'telefono' ? 'phone-pad' : 'default'}
-            autoCapitalize={field === 'direccion' ? 'words' : 'none'}
-          />
-          {errors[field] && (
-            <Text style={styles.errorText}>{errors[field]}</Text>
-          )}
-        </View>
-      ) : (
-        <Text style={styles.profileItemValue}>
-          {value || 'No especificado'}
-        </Text>
-      )}
+      <Text style={styles.profileItemValue}>
+        {value || 'No especificado'}
+      </Text>
     </View>
   );
 
@@ -173,24 +278,12 @@ const PatientProfile = () => {
             <Text style={styles.subtitle}>Información personal</Text>
           </View>
           <View style={styles.headerButtons}>
-            {!editing ? (
-              <TouchableOpacity onPress={() => setEditing(true)} style={styles.editButton}>
-                <Ionicons name="pencil" size={20} color="#007AFF" />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.editActions}>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
-                  <Ionicons name="close" size={20} color="#666" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
-                  {saving ? (
-                    <Ionicons name="hourglass" size={20} color="#34C759" />
-                  ) : (
-                    <Ionicons name="checkmark" size={20} color="#34C759" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+            <TouchableOpacity onPress={() => setShowEditModal(true)} style={styles.editButton}>
+              <Ionicons name="pencil" size={20} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowSecurityModal(true)} style={styles.securityButton}>
+              <Ionicons name="shield-checkmark" size={20} color="#007AFF" />
+            </TouchableOpacity>
             <TouchableOpacity onPress={logout} style={styles.logoutButton}>
               <Ionicons name="log-out-outline" size={24} color="#666" />
             </TouchableOpacity>
@@ -220,15 +313,11 @@ const PatientProfile = () => {
               icon="call-outline"
               label="Teléfono"
               value={profile?.telefono}
-              editable={true}
-              field="telefono"
             />
             <ProfileItem
               icon="location-outline"
               label="Dirección"
               value={profile?.direccion}
-              editable={true}
-              field="direccion"
             />
             <ProfileItem
               icon="calendar-outline"
@@ -260,9 +349,218 @@ const PatientProfile = () => {
             </View>
           </View>
         </View>
+
+        {/* Medical Services */}
+        <View style={styles.medicalSection}>
+          <Text style={styles.sectionTitle}>Servicios Médicos</Text>
+
+          <View style={styles.medicalCard}>
+            <TouchableOpacity
+              style={styles.medicalAction}
+              onPress={() => navigation.navigate('PatientHistory')}
+            >
+              <View style={styles.medicalActionLeft}>
+                <Ionicons name="document-text-outline" size={24} color="#007AFF" />
+                <View style={styles.medicalActionInfo}>
+                  <Text style={styles.medicalActionTitle}>Historial Médico</Text>
+                  <Text style={styles.medicalActionSubtitle}>Ver registros médicos y tratamientos</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
-    </SafeAreaView>
-  );
+
+     {/* Edit Profile Modal */}
+     <Modal
+       visible={showEditModal}
+       animationType="slide"
+       presentationStyle="pageSheet"
+       onRequestClose={handleCancel}
+     >
+       <SafeAreaView style={styles.modalContainer}>
+         <View style={styles.modalHeader}>
+           <Text style={styles.modalTitle}>Editar Perfil</Text>
+           <TouchableOpacity onPress={handleCancel} style={styles.modalCloseButton}>
+             <Ionicons name="close" size={24} color="#666" />
+           </TouchableOpacity>
+         </View>
+
+         <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+           <View style={styles.modalContent}>
+             <CustomInput
+               label="Documento"
+               value={formData.documento}
+               onChangeText={(value) => updateFormData('documento', value)}
+               placeholder="Ingresa tu documento"
+               error={errors.documento}
+               icon={<Ionicons name="card-outline" size={20} color="#666" />}
+             />
+
+             <CustomInput
+               label="Teléfono"
+               value={formData.telefono}
+               onChangeText={(value) => updateFormData('telefono', value)}
+               placeholder="Ingresa tu teléfono"
+               keyboardType="phone-pad"
+               error={errors.telefono}
+               icon={<Ionicons name="call-outline" size={20} color="#666" />}
+             />
+
+             <CustomInput
+               label="Dirección"
+               value={formData.direccion}
+               onChangeText={(value) => updateFormData('direccion', value)}
+               placeholder="Ingresa tu dirección"
+               autoCapitalize="words"
+               error={errors.direccion}
+               icon={<Ionicons name="location-outline" size={20} color="#666" />}
+             />
+
+             <View style={styles.dateInputContainer}>
+               <Text style={styles.dateInputLabel}>Fecha de Nacimiento</Text>
+               <TouchableOpacity
+                 style={[styles.dateInput, errors.fecha_nacimiento && styles.dateInputError]}
+                 onPress={openDatePicker}
+               >
+                 <Ionicons name="calendar-outline" size={20} color="#666" />
+                 <Text style={[styles.dateInputText, !formData.fecha_nacimiento && styles.dateInputPlaceholder]}>
+                   {formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : 'Seleccionar fecha'}
+                 </Text>
+               </TouchableOpacity>
+               {errors.fecha_nacimiento && (
+                 <Text style={styles.errorText}>{errors.fecha_nacimiento}</Text>
+               )}
+             </View>
+
+             <CustomInput
+               label="Género (M/F/O)"
+               value={formData.genero}
+               onChangeText={(value) => updateFormData('genero', value.toUpperCase())}
+               placeholder="M (Masculino), F (Femenino), O (Otro)"
+               maxLength={1}
+               autoCapitalize="characters"
+               error={errors.genero}
+               icon={<Ionicons name="male-female-outline" size={20} color="#666" />}
+             />
+
+             <View style={styles.modalActions}>
+               <CustomButton
+                 title="Cancelar"
+                 onPress={handleCancel}
+                 variant="secondary"
+                 style={styles.modalButton}
+                 disabled={saving}
+               />
+               <CustomButton
+                 title={saving ? "Guardando..." : "Guardar"}
+                 onPress={handleSave}
+                 style={styles.modalButton}
+                 disabled={saving}
+                 loading={saving}
+               />
+             </View>
+           </View>
+         </ScrollView>
+       </SafeAreaView>
+     </Modal>
+
+     {/* Date Picker */}
+     {showDatePicker && (
+       <DateTimePicker
+         value={formData.fecha_nacimiento ? new Date(formData.fecha_nacimiento + 'T00:00:00') : new Date()}
+         mode="date"
+         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+         onChange={handleDateChange}
+         maximumDate={new Date()}
+         minimumDate={new Date(1900, 0, 1)}
+       />
+     )}
+
+     {/* Security Settings Modal */}
+     <Modal
+       visible={showSecurityModal}
+       animationType="slide"
+       presentationStyle="pageSheet"
+       onRequestClose={() => setShowSecurityModal(false)}
+     >
+       <SafeAreaView style={styles.modalContainer}>
+         <View style={styles.modalHeader}>
+           <Text style={styles.modalTitle}>Configuración de Seguridad</Text>
+           <TouchableOpacity onPress={() => setShowSecurityModal(false)} style={styles.modalCloseButton}>
+             <Ionicons name="close" size={24} color="#666" />
+           </TouchableOpacity>
+         </View>
+
+         <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+           <View style={styles.modalContent}>
+             {/* Change Email Section */}
+             <View style={styles.securitySection}>
+               <Text style={styles.sectionTitle}>Cambiar Email</Text>
+               <CustomInput
+                 label="Nuevo Email"
+                 value={securityFormData.newEmail}
+                 onChangeText={(value) => updateSecurityFormData('newEmail', value)}
+                 placeholder="Ingresa tu nuevo email"
+                 keyboardType="email-address"
+                 autoCapitalize="none"
+                 icon={<Ionicons name="mail-outline" size={20} color="#666" />}
+               />
+               <CustomInput
+                 label="Contraseña Actual"
+                 value={securityFormData.currentPassword}
+                 onChangeText={(value) => updateSecurityFormData('currentPassword', value)}
+                 placeholder="Ingresa tu contraseña actual"
+                 secureTextEntry
+                 icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+               />
+               <CustomButton
+                 title="Actualizar Email"
+                 onPress={handleUpdateEmail}
+                 style={styles.securityButton}
+               />
+             </View>
+
+             {/* Change Password Section */}
+             <View style={styles.securitySection}>
+               <Text style={styles.sectionTitle}>Cambiar Contraseña</Text>
+               <CustomInput
+                 label="Contraseña Actual"
+                 value={securityFormData.currentPassword}
+                 onChangeText={(value) => updateSecurityFormData('currentPassword', value)}
+                 placeholder="Ingresa tu contraseña actual"
+                 secureTextEntry
+                 icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+               />
+               <CustomInput
+                 label="Nueva Contraseña"
+                 value={securityFormData.newPassword}
+                 onChangeText={(value) => updateSecurityFormData('newPassword', value)}
+                 placeholder="Ingresa tu nueva contraseña"
+                 secureTextEntry
+                 icon={<Ionicons name="lock-open-outline" size={20} color="#666" />}
+               />
+               <CustomInput
+                 label="Confirmar Nueva Contraseña"
+                 value={securityFormData.newPassword_confirmation}
+                 onChangeText={(value) => updateSecurityFormData('newPassword_confirmation', value)}
+                 placeholder="Confirma tu nueva contraseña"
+                 secureTextEntry
+                 icon={<Ionicons name="lock-open-outline" size={20} color="#666" />}
+               />
+               <CustomButton
+                 title="Actualizar Contraseña"
+                 onPress={handleUpdatePassword}
+                 style={styles.securityButton}
+               />
+             </View>
+           </View>
+         </ScrollView>
+       </SafeAreaView>
+     </Modal>
+   </SafeAreaView>
+ );
 };
 
 const styles = StyleSheet.create({
@@ -314,16 +612,9 @@ const styles = StyleSheet.create({
     padding: 8,
     marginRight: 8,
   },
-  editActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  securityButton: {
+    padding: 8,
     marginRight: 8,
-  },
-  cancelButton: {
-    padding: 8,
-  },
-  saveButton: {
-    padding: 8,
   },
   logoutButton: {
     padding: 8,
@@ -404,29 +695,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  editContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
-    marginBottom: 4,
-  },
-  editInputError: {
-    borderColor: '#ff3b30',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#ff3b30',
-    marginBottom: 8,
-  },
   accountSection: {
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -461,6 +729,135 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 12,
   },
-});
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    marginTop: 32,
+  },
+  modalButton: {
+    flex: 1,
+  },
+  // Date input styles
+  dateInputContainer: {
+    marginBottom: 16,
+  },
+  dateInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+  },
+  dateInputError: {
+    borderColor: '#ff3b30',
+  },
+  dateInputText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+  },
+  dateInputPlaceholder: {
+    color: '#999',
+  },
+  securityButton: {
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  securitySection: {
+    marginBottom: 32,
+  },
+  // Medical Services styles
+  medicalSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: 40,
+  },
+  medicalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  medicalAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  medicalActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  medicalActionInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  medicalActionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  medicalActionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  });
 
 export default PatientProfile;

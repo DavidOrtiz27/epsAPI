@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
@@ -18,6 +19,7 @@ const PatientAppointments = () => {
   const navigation = useNavigation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('proximas'); // 'proximas', 'historial'
 
   useFocusEffect(
@@ -26,15 +28,23 @@ const PatientAppointments = () => {
     }, [])
   );
 
-  const loadAppointments = async () => {
+  const loadAppointments = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      }
       const appointmentsData = await apiService.getPatientAppointments();
       setAppointments(appointmentsData || []);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadAppointments(true);
   };
 
   const handleCancelAppointment = async (appointmentId) => {
@@ -62,8 +72,11 @@ const PatientAppointments = () => {
   };
 
   const AppointmentCard = ({ appointment, showCancelButton = false, onCancel }) => {
-    const isUpcoming = new Date(appointment.fecha) >= new Date();
-    const isNotCancelled = appointment.estado?.toLowerCase() !== 'cancelada';
+    const appointmentDate = new Date(appointment.fecha);
+    const now = new Date();
+    const isUpcoming = appointmentDate >= now;
+    const isCancellable = appointment.estado?.toLowerCase() !== 'cancelada' &&
+                         appointment.estado?.toLowerCase() !== 'realizada';
 
     return (
       <View style={styles.appointmentCard}>
@@ -111,7 +124,7 @@ const PatientAppointments = () => {
         )}
 
         {/* Botón cancelar */}
-        {showCancelButton && isUpcoming && isNotCancelled && (
+        {showCancelButton && isUpcoming && isCancellable && (
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -153,11 +166,23 @@ const PatientAppointments = () => {
   };
 
   const upcomingAppointments = appointments.filter(
-    (apt) => new Date(apt.fecha) >= new Date() && apt.estado?.toLowerCase() !== 'cancelada'
+    (apt) => {
+      const appointmentDate = new Date(apt.fecha);
+      const now = new Date();
+      const isFuture = appointmentDate >= now;
+      const isActive = apt.estado?.toLowerCase() !== 'cancelada' && apt.estado?.toLowerCase() !== 'realizada';
+      return isFuture && isActive;
+    }
   );
 
   const pastAppointments = appointments.filter(
-    (apt) => new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
+    (apt) => {
+      const appointmentDate = new Date(apt.fecha);
+      const now = new Date();
+      const isPast = appointmentDate < now;
+      const isCompleted = apt.estado?.toLowerCase() === 'realizada' || apt.estado?.toLowerCase() === 'cancelada';
+      return isPast || isCompleted;
+    }
   );
 
   const getFilteredAppointments = () => {
@@ -239,7 +264,18 @@ const PatientAppointments = () => {
       </View>
 
       {/* Appointments List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{getTabTitle()}</Text>
           {filteredAppointments.length > 0 ? (

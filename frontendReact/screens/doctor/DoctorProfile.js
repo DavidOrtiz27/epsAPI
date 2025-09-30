@@ -7,25 +7,33 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 import CustomButton from '../../components/ui/CustomButton';
+import CustomInput from '../../components/ui/CustomInput';
 
 const DoctorProfile = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [doctorData, setDoctorData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     registro_profesional: '',
     especialidad: '',
     telefono: '',
+  });
+  const [securityFormData, setSecurityFormData] = useState({
+    newEmail: '',
+    currentPassword: '',
+    newPassword: '',
+    newPassword_confirmation: '',
   });
   const [errors, setErrors] = useState({});
   const [stats, setStats] = useState({
@@ -147,7 +155,7 @@ const DoctorProfile = () => {
 
       // Reload doctor data to get updated information
       await loadDoctorData();
-      setEditing(false);
+      setShowEditModal(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -167,34 +175,80 @@ const DoctorProfile = () => {
       });
     }
     setErrors({});
-    setEditing(false);
+    setShowEditModal(false);
   };
 
-  const ProfileItem = ({ icon, label, value, editable = false, field }) => (
+  const updateSecurityFormData = (field, value) => {
+    setSecurityFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!securityFormData.newEmail || !securityFormData.currentPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    try {
+      await apiService.updateEmail({
+        email: securityFormData.newEmail,
+        password: securityFormData.currentPassword,
+      });
+
+      // Update user context with new email
+      const updatedUser = { ...user, email: securityFormData.newEmail };
+      updateUser(updatedUser);
+
+      setSecurityFormData(prev => ({ ...prev, newEmail: '', currentPassword: '' }));
+      setShowSecurityModal(false);
+      Alert.alert('Éxito', 'Email actualizado correctamente');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar el email');
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!securityFormData.currentPassword || !securityFormData.newPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    if (securityFormData.newPassword !== securityFormData.newPassword_confirmation) {
+      Alert.alert('Error', 'Las contraseñas nuevas no coinciden');
+      return;
+    }
+
+    try {
+      await apiService.updatePassword({
+        current_password: securityFormData.currentPassword,
+        password: securityFormData.newPassword,
+        password_confirmation: securityFormData.newPassword_confirmation,
+      });
+
+      setSecurityFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        newPassword_confirmation: ''
+      }));
+      setShowSecurityModal(false);
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+    }
+  };
+
+  const ProfileItem = ({ icon, label, value }) => (
     <View style={styles.profileItem}>
       <View style={styles.profileItemLeft}>
         <Ionicons name={icon} size={20} color="#666" />
         <Text style={styles.profileItemLabel}>{label}</Text>
       </View>
-      {editing && editable ? (
-        <View style={styles.editContainer}>
-          <TextInput
-            style={[styles.editInput, errors[field] && styles.editInputError]}
-            value={formData[field]}
-            onChangeText={(value) => updateFormData(field, value)}
-            placeholder={`Ingresa ${label.toLowerCase()}`}
-            keyboardType={field === 'telefono' ? 'phone-pad' : 'default'}
-            autoCapitalize={field === 'especialidad' ? 'words' : 'none'}
-          />
-          {errors[field] && (
-            <Text style={styles.errorText}>{errors[field]}</Text>
-          )}
-        </View>
-      ) : (
-        <Text style={styles.profileItemValue}>
-          {value || 'No especificado'}
-        </Text>
-      )}
+      <Text style={styles.profileItemValue}>
+        {value || 'No especificado'}
+      </Text>
     </View>
   );
 
@@ -208,24 +262,12 @@ const DoctorProfile = () => {
             <Text style={styles.subtitle}>Información profesional</Text>
           </View>
           <View style={styles.headerButtons}>
-            {!editing ? (
-              <TouchableOpacity onPress={() => setEditing(true)} style={styles.editButton}>
-                <Ionicons name="pencil" size={20} color="#007AFF" />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.editActions}>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
-                  <Ionicons name="close" size={20} color="#666" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
-                  {saving ? (
-                    <Ionicons name="hourglass" size={20} color="#34C759" />
-                  ) : (
-                    <Ionicons name="checkmark" size={20} color="#34C759" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+            <TouchableOpacity onPress={() => setShowEditModal(true)} style={styles.editButton}>
+              <Ionicons name="pencil" size={20} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowSecurityModal(true)} style={styles.securityButton}>
+              <Ionicons name="shield-checkmark" size={20} color="#007AFF" />
+            </TouchableOpacity>
             <TouchableOpacity onPress={logout} style={styles.logoutButton}>
               <Ionicons name="log-out-outline" size={24} color="#666" />
             </TouchableOpacity>
@@ -254,22 +296,16 @@ const DoctorProfile = () => {
               icon="card-outline"
               label="Registro Profesional"
               value={doctorData?.registro_profesional}
-              editable={true}
-              field="registro_profesional"
             />
             <ProfileItem
               icon="school-outline"
               label="Especialidad"
               value={doctorData?.especialidad}
-              editable={true}
-              field="especialidad"
             />
             <ProfileItem
               icon="call-outline"
               label="Teléfono"
               value={doctorData?.telefono}
-              editable={true}
-              field="telefono"
             />
           </View>
         </View>
@@ -346,6 +382,155 @@ const DoctorProfile = () => {
 
          </View>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCancel}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Editar Perfil</Text>
+            <TouchableOpacity onPress={handleCancel} style={styles.modalCloseButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.modalContent}>
+              <CustomInput
+                label="Registro Profesional"
+                value={formData.registro_profesional}
+                onChangeText={(value) => updateFormData('registro_profesional', value)}
+                placeholder="Ingresa tu registro profesional"
+                error={errors.registro_profesional}
+                icon={<Ionicons name="card-outline" size={20} color="#666" />}
+              />
+
+              <CustomInput
+                label="Especialidad"
+                value={formData.especialidad}
+                onChangeText={(value) => updateFormData('especialidad', value)}
+                placeholder="Ingresa tu especialidad"
+                autoCapitalize="words"
+                error={errors.especialidad}
+                icon={<Ionicons name="school-outline" size={20} color="#666" />}
+              />
+
+              <CustomInput
+                label="Teléfono"
+                value={formData.telefono}
+                onChangeText={(value) => updateFormData('telefono', value)}
+                placeholder="Ingresa tu teléfono"
+                keyboardType="phone-pad"
+                error={errors.telefono}
+                icon={<Ionicons name="call-outline" size={20} color="#666" />}
+              />
+
+              <View style={styles.modalActions}>
+                <CustomButton
+                  title="Cancelar"
+                  onPress={handleCancel}
+                  variant="secondary"
+                  style={styles.modalButton}
+                  disabled={saving}
+                />
+                <CustomButton
+                  title={saving ? "Guardando..." : "Guardar"}
+                  onPress={handleSave}
+                  style={styles.modalButton}
+                  disabled={saving}
+                  loading={saving}
+                />
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Security Settings Modal */}
+      <Modal
+        visible={showSecurityModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSecurityModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Configuración de Seguridad</Text>
+            <TouchableOpacity onPress={() => setShowSecurityModal(false)} style={styles.modalCloseButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.modalContent}>
+              {/* Change Email Section */}
+              <View style={styles.securitySection}>
+                <Text style={styles.sectionTitle}>Cambiar Email</Text>
+                <CustomInput
+                  label="Nuevo Email"
+                  value={securityFormData.newEmail}
+                  onChangeText={(value) => updateSecurityFormData('newEmail', value)}
+                  placeholder="Ingresa tu nuevo email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  icon={<Ionicons name="mail-outline" size={20} color="#666" />}
+                />
+                <CustomInput
+                  label="Contraseña Actual"
+                  value={securityFormData.currentPassword}
+                  onChangeText={(value) => updateSecurityFormData('currentPassword', value)}
+                  placeholder="Ingresa tu contraseña actual"
+                  secureTextEntry
+                  icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+                />
+                <CustomButton
+                  title="Actualizar Email"
+                  onPress={handleUpdateEmail}
+                  style={styles.securityButton}
+                />
+              </View>
+
+              {/* Change Password Section */}
+              <View style={styles.securitySection}>
+                <Text style={styles.sectionTitle}>Cambiar Contraseña</Text>
+                <CustomInput
+                  label="Contraseña Actual"
+                  value={securityFormData.currentPassword}
+                  onChangeText={(value) => updateSecurityFormData('currentPassword', value)}
+                  placeholder="Ingresa tu contraseña actual"
+                  secureTextEntry
+                  icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+                />
+                <CustomInput
+                  label="Nueva Contraseña"
+                  value={securityFormData.newPassword}
+                  onChangeText={(value) => updateSecurityFormData('newPassword', value)}
+                  placeholder="Ingresa tu nueva contraseña"
+                  secureTextEntry
+                  icon={<Ionicons name="lock-open-outline" size={20} color="#666" />}
+                />
+                <CustomInput
+                  label="Confirmar Nueva Contraseña"
+                  value={securityFormData.newPassword_confirmation}
+                  onChangeText={(value) => updateSecurityFormData('newPassword_confirmation', value)}
+                  placeholder="Confirma tu nueva contraseña"
+                  secureTextEntry
+                  icon={<Ionicons name="lock-open-outline" size={20} color="#666" />}
+                />
+                <CustomButton
+                  title="Actualizar Contraseña"
+                  onPress={handleUpdatePassword}
+                  style={styles.securityButton}
+                />
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -387,17 +572,6 @@ const styles = StyleSheet.create({
   editButton: {
     padding: 8,
     marginRight: 8,
-  },
-  editActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  cancelButton: {
-    padding: 8,
-  },
-  saveButton: {
-    padding: 8,
   },
   logoutButton: {
     padding: 8,
@@ -471,29 +645,6 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
     textAlign: 'right',
-  },
-  editContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
-    marginBottom: 4,
-  },
-  editInputError: {
-    borderColor: '#ff3b30',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#ff3b30',
-    marginBottom: 8,
   },
   statsSection: {
     paddingHorizontal: 24,
@@ -597,6 +748,51 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
- });
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    marginTop: 32,
+  },
+  modalButton: {
+    flex: 1,
+  },
+  securityButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  securitySection: {
+    marginBottom: 32,
+  },
+  });
 
 export default DoctorProfile;

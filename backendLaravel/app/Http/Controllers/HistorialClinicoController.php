@@ -119,22 +119,61 @@ class HistorialClinicoController extends Controller
     }
 
     /**
-     * Get current patient's medical history
+     * Get current patient's medical history (filtered for patient view)
      */
     public function miHistorial(Request $request)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        if (!$user->paciente) {
-            return response()->json(['message' => 'Paciente profile not found'], 404);
+            if (!$user->paciente) {
+                return response()->json(['message' => 'Paciente profile not found'], 404);
+            }
+
+            $historiales = HistorialClinico::where('paciente_id', $user->paciente->id)
+                                          ->with(['tratamientos', 'cita.medico.user'])
+                                          ->orderBy('created_at', 'desc')
+                                          ->get();
+
+            // Filter data for patient view - remove sensitive information
+            $filteredHistoriales = $historiales->map(function ($historial) {
+                $citaInfo = null;
+                if ($historial->cita) {
+                    $citaInfo = [
+                        'id' => $historial->cita->id,
+                        'fecha' => $historial->cita->fecha ? \Carbon\Carbon::parse($historial->cita->fecha)->toISOString() : null,
+                        'estado' => $historial->cita->estado,
+                        'motivo' => $historial->cita->motivo,
+                        'medico' => $historial->cita->medico && $historial->cita->medico->user ? [
+                            'id' => $historial->cita->medico->id,
+                            'name' => $historial->cita->medico->user->name,
+                        ] : null,
+                    ];
+                }
+
+                return [
+                    'id' => $historial->id,
+                    'fecha' => $historial->created_at ? \Carbon\Carbon::parse($historial->created_at)->toISOString() : null,
+                    'created_at' => $historial->created_at ? \Carbon\Carbon::parse($historial->created_at)->toISOString() : null,
+                    'diagnostico' => $historial->diagnostico,
+                    'cita' => $citaInfo,
+                    // Remove 'observaciones' as they contain doctor's private notes
+                    'tratamientos' => $historial->tratamientos ? $historial->tratamientos->map(function ($tratamiento) {
+                        return [
+                            'id' => $tratamiento->id,
+                            'descripcion' => $tratamiento->descripcion,
+                            'fecha_inicio' => $tratamiento->fecha_inicio ? \Carbon\Carbon::parse($tratamiento->fecha_inicio)->toISOString() : null,
+                            'fecha_fin' => $tratamiento->fecha_fin ? \Carbon\Carbon::parse($tratamiento->fecha_fin)->toISOString() : null,
+                        ];
+                    }) : [],
+                ];
+            });
+
+            return response()->json($filteredHistoriales);
+        } catch (\Exception $e) {
+            \Log::error('Error in miHistorial: ' . $e->getMessage());
+            return response()->json(['message' => 'Error interno del servidor'], 500);
         }
-
-        $historiales = HistorialClinico::where('paciente_id', $user->paciente->id)
-                                      ->with(['paciente.user', 'tratamientos'])
-                                      ->orderBy('created_at', 'desc')
-                                      ->get();
-
-        return response()->json($historiales);
     }
 
     /**
