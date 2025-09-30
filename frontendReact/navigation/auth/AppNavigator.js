@@ -26,13 +26,15 @@ const Stack = createStackNavigator();
 const AppNavigator = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
 
+  console.log('AppNavigator - isAuthenticated:', isAuthenticated, 'user:', user, 'isLoading:', isLoading);
+
   if (isLoading) {
     // You could return a loading screen here
     return null;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={isAuthenticated ? 'authenticated' : 'unauthenticated'}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: {

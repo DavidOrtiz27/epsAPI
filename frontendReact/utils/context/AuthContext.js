@@ -50,6 +50,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Clear any existing session before attempting login
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('user_data');
+      setToken(null);
+      setUser(null);
+
       const response = await apiService.login({ email, password });
       setUser(response.user);
       setToken(response.token);

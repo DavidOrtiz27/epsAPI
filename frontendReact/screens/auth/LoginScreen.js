@@ -50,9 +50,15 @@ const LoginScreen = () => {
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
-      // Navigation will be handled automatically by AuthContext
+      const response = await login(email.trim(), password);
+
+      // Force navigation reset to ensure proper navigation after login
+      // The NavigationContainer should handle this automatically, but we'll ensure it
+      console.log('Login successful, user:', response.user);
+
+      // Navigation will be handled automatically by AuthContext/AppNavigator
     } catch (error) {
+      console.error('Login error:', error);
       // Mostrar alerta visual en lugar de console.error
       if (error.message?.includes('Invalid credentials') || error.message?.includes('credenciales')) {
         showErrorAlert(error, 'Usuario o contraseña incorrectos. Por favor, verifica tus datos.');

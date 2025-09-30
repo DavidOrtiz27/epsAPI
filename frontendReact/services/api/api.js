@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (Platform.OS === 'android') {
     // Para teléfono físico Android, usar IP real de la máquina
-    return 'http://10.2.234.100:8000/api';
+    return 'http://10.2.234.89:8000/api';
   }
   // Para iOS simulator o desarrollo web
   return 'http://localhost:8000/api';

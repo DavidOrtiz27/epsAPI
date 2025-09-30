@@ -26,7 +26,7 @@ flowchart TD
     I --> O[DoctorDashboard<br/>screens/doctor/DoctorDashboard.js]
     I --> P[DoctorPatients<br/>screens/doctor/DoctorPatients.js]
     I --> Q[DoctorAppointments<br/>screens/doctor/DoctorAppointments.js]
-    I --> R[DoctorProfile<br/>screens/doctor/DoctorProfile.js]
+    I --> R[DoctorProfile<br/>screens/doctor/DoctorProfile.js]D
 
     %% API Service
     K --> S[apiService<br/>services/api/api.js]
