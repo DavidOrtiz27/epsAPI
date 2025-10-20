@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  TextInput,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
@@ -21,6 +22,14 @@ const DoctorSchedule = () => {
   const [loading, setLoading] = useState(true);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [doctorProfile, setDoctorProfile] = useState(null);
+  
+  // Estados para los time pickers
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
+  
   const [formData, setFormData] = useState({
     dia_semana: 'lunes',
     hora_inicio: '',
@@ -38,8 +47,19 @@ const DoctorSchedule = () => {
   ];
 
   useEffect(() => {
+    loadDoctorProfile();
     loadSchedules();
   }, []);
+
+  const loadDoctorProfile = async () => {
+    try {
+      const response = await apiService.request('/medicos/profile');
+      console.log('🔍 Doctor profile loaded:', response);
+      setDoctorProfile(response);
+    } catch (error) {
+      console.error('Error loading doctor profile:', error);
+    }
+  };
 
   const loadSchedules = async () => {
     try {
@@ -54,6 +74,11 @@ const DoctorSchedule = () => {
   };
 
   const handleSaveSchedule = async () => {
+    console.log('🔍 Debugging - User object:', user);
+    console.log('🔍 Debugging - User.medico:', user.medico);
+    console.log('🔍 Debugging - Doctor profile:', doctorProfile);
+    console.log('🔍 Debugging - User.id:', user.id);
+    
     if (!formData.hora_inicio || !formData.hora_fin) {
       Alert.alert('Error', 'Debe ingresar hora de inicio y fin');
       return;
@@ -64,11 +89,32 @@ const DoctorSchedule = () => {
       return;
     }
 
+    // Obtener el medico_id de manera más robusta
+    let medico_id = null;
+    
+    if (doctorProfile?.id) {
+      medico_id = doctorProfile.id;
+    } else if (user.medico?.id) {
+      medico_id = user.medico.id;
+    } else if (user.id) {
+      // Si no hay relación medico, usar el user_id directamente
+      medico_id = user.id;
+    }
+    
+    console.log('🔍 Debugging - medico_id to use:', medico_id);
+    
+    if (!medico_id) {
+      Alert.alert('Error', 'No se pudo obtener el ID del médico. Inténtelo de nuevo.');
+      return;
+    }
+
     try {
       const scheduleData = {
-        medico_id: user.medico?.id,
+        medico_id: medico_id,
         ...formData,
       };
+      
+      console.log('🔍 Debugging - Schedule data to send:', scheduleData);
 
       if (editingSchedule) {
         await apiService.request(`/medicos/horarios/${editingSchedule.id}`, {
@@ -122,11 +168,23 @@ const DoctorSchedule = () => {
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule(schedule);
+    const horaInicio = schedule.hora_inicio ? schedule.hora_inicio.substring(0, 5) : '';
+    const horaFin = schedule.hora_fin ? schedule.hora_fin.substring(0, 5) : '';
+    
     setFormData({
       dia_semana: schedule.dia_semana,
-      hora_inicio: schedule.hora_inicio ? schedule.hora_inicio.substring(0, 5) : '',
-      hora_fin: schedule.hora_fin ? schedule.hora_fin.substring(0, 5) : '',
+      hora_inicio: horaInicio,
+      hora_fin: horaFin,
     });
+    
+    // Configurar los time pickers con las horas existentes
+    if (horaInicio) {
+      setStartTime(timeStringToDate(horaInicio));
+    }
+    if (horaFin) {
+      setEndTime(timeStringToDate(horaFin));
+    }
+    
     setShowScheduleModal(true);
   };
 
@@ -136,6 +194,85 @@ const DoctorSchedule = () => {
       hora_inicio: '',
       hora_fin: '',
     });
+    // Reset time pickers to default times (9:00 AM y 5:00 PM)
+    setStartTime(new Date(2024, 0, 1, 9, 0)); // 9:00 AM
+    setEndTime(new Date(2024, 0, 1, 17, 0)); // 5:00 PM
+  };
+
+  // Funciones para manejar los time pickers
+  const handleStartTimeChange = (event, selectedTime) => {
+    if (Platform.OS === 'android') {
+      setShowStartTimePicker(false);
+    }
+    
+    if (selectedTime) {
+      setStartTime(selectedTime);
+      // Guardar en formato 24h para el backend
+      const timeString24h = selectedTime.toTimeString().substring(0, 5);
+      setFormData(prev => ({ ...prev, hora_inicio: timeString24h }));
+      
+      // En iOS, cerrar automáticamente después de seleccionar
+      if (Platform.OS === 'ios') {
+        setTimeout(() => setShowStartTimePicker(false), 100);
+      }
+    }
+  };
+
+  const handleEndTimeChange = (event, selectedTime) => {
+    if (Platform.OS === 'android') {
+      setShowEndTimePicker(false);
+    }
+    
+    if (selectedTime) {
+      setEndTime(selectedTime);
+      // Guardar en formato 24h para el backend
+      const timeString24h = selectedTime.toTimeString().substring(0, 5);
+      setFormData(prev => ({ ...prev, hora_fin: timeString24h }));
+      
+      // En iOS, cerrar automáticamente después de seleccionar
+      if (Platform.OS === 'ios') {
+        setTimeout(() => setShowEndTimePicker(false), 100);
+      }
+    }
+  };
+
+  const openStartTimePicker = () => {
+    setShowStartTimePicker(true);
+  };
+
+  const openEndTimePicker = () => {
+    setShowEndTimePicker(true);
+  };
+
+  // Función para convertir string de hora a Date object
+  const timeStringToDate = (timeString) => {
+    if (!timeString) return new Date(2024, 0, 1, 9, 0);
+    const [hours, minutes] = timeString.split(':');
+    return new Date(2024, 0, 1, parseInt(hours), parseInt(minutes));
+  };
+
+  // Función para convertir de formato 24h a 12h (AM/PM)
+  const formatTo12Hour = (time24) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  // Función para convertir de formato 12h (AM/PM) a 24h
+  const formatTo24Hour = (time12) => {
+    if (!time12) return '';
+    const timeString = time12.replace(/\s?(AM|PM)/i, '');
+    const isPM = /PM/i.test(time12);
+    const [hours, minutes] = timeString.split(':');
+    let hour = parseInt(hours);
+    
+    if (isPM && hour !== 12) hour += 12;
+    if (!isPM && hour === 12) hour = 0;
+    
+    return `${hour.toString().padStart(2, '0')}:${minutes}`;
   };
 
   const getDayLabel = (dayKey) => {
@@ -173,15 +310,29 @@ const DoctorSchedule = () => {
         <View style={styles.header}>
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeText}>Mis Horarios</Text>
-            <Text style={styles.subtitle}>Gestiona tu disponibilidad</Text>
+            <Text style={styles.subtitle}>
+              {doctorProfile ? 'Gestiona tu disponibilidad' : 'Cargando perfil...'}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() => {
+              if (!doctorProfile?.id) {
+                Alert.alert(
+                  'Error', 
+                  'Cargando perfil del médico. Inténtelo en unos segundos.',
+                  [{ text: 'Aceptar' }]
+                );
+                return;
+              }
               resetForm();
               setEditingSchedule(null);
               setShowScheduleModal(true);
             }}
-            style={styles.addButton}
+            style={[
+              styles.addButton,
+              !doctorProfile && styles.addButtonDisabled
+            ]}
+            disabled={!doctorProfile}
           >
             <Ionicons name="add" size={24} color="#007AFF" />
           </TouchableOpacity>
@@ -197,7 +348,7 @@ const DoctorSchedule = () => {
                   <View style={styles.scheduleInfo}>
                     <Ionicons name="time-outline" size={20} color="#666" />
                     <Text style={styles.scheduleTime}>
-                      {schedule.hora_inicio?.substring(0, 5)} - {schedule.hora_fin?.substring(0, 5)}
+                      {formatTo12Hour(schedule.hora_inicio?.substring(0, 5))} - {formatTo12Hour(schedule.hora_fin?.substring(0, 5))}
                     </Text>
                   </View>
                   <View style={styles.scheduleActions}>
@@ -262,22 +413,26 @@ const DoctorSchedule = () => {
               </View>
 
               <Text style={styles.label}>Hora de Inicio</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.hora_inicio}
-                onChangeText={(value) => setFormData(prev => ({ ...prev, hora_inicio: value }))}
-                placeholder="HH:MM (ej: 09:00)"
-                keyboardType="numeric"
-              />
+              <TouchableOpacity
+                style={styles.timePickerButton}
+                onPress={openStartTimePicker}
+              >
+                <Text style={styles.timePickerText}>
+                  {formData.hora_inicio ? formatTo12Hour(formData.hora_inicio) : 'Seleccionar hora de inicio'}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
 
               <Text style={styles.label}>Hora de Fin</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.hora_fin}
-                onChangeText={(value) => setFormData(prev => ({ ...prev, hora_fin: value }))}
-                placeholder="HH:MM (ej: 17:00)"
-                keyboardType="numeric"
-              />
+              <TouchableOpacity
+                style={styles.timePickerButton}
+                onPress={openEndTimePicker}
+              >
+                <Text style={styles.timePickerText}>
+                  {formData.hora_fin ? formatTo12Hour(formData.hora_fin) : 'Seleccionar hora de fin'}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
             </ScrollView>
 
             <View style={styles.modalButtons}>
@@ -301,6 +456,27 @@ const DoctorSchedule = () => {
             </View>
           </View>
         </View>
+        
+        {/* Time Pickers */}
+        {showStartTimePicker && (
+          <DateTimePicker
+            value={startTime}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleStartTimeChange}
+          />
+        )}
+        
+        {showEndTimePicker && (
+          <DateTimePicker
+            value={endTime}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleEndTimeChange}
+          />
+        )}
       </Modal>
     </SafeAreaView>
   );
@@ -488,6 +664,28 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
+  },
+  timePickerButton: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48,
+  },
+  timePickerText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+    fontWeight: '500',
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

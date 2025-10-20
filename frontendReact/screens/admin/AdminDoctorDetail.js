@@ -89,6 +89,46 @@ const AdminDoctorDetail = ({ navigation, route }) => {
     </View>
   );
 
+  // Función para formatear hora a AM/PM
+  const formatTo12Hour = (time24) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  // Función para obtener el nombre del día
+  const getDayLabel = (dayKey) => {
+    const days = {
+      lunes: 'Lunes',
+      martes: 'Martes',
+      miercoles: 'Miércoles',
+      jueves: 'Jueves',
+      viernes: 'Viernes',
+      sabado: 'Sábado',
+      domingo: 'Domingo'
+    };
+    return days[dayKey] || dayKey;
+  };
+
+  // Función para renderizar los horarios detallados
+  const renderScheduleItem = (schedule) => (
+    <View key={schedule.id} style={styles.scheduleItem}>
+      <View style={styles.scheduleDay}>
+        <Ionicons name="calendar-outline" size={16} color="#007AFF" />
+        <Text style={styles.scheduleDayText}>{getDayLabel(schedule.dia_semana)}</Text>
+      </View>
+      <View style={styles.scheduleTime}>
+        <Ionicons name="time-outline" size={16} color="#666" />
+        <Text style={styles.scheduleTimeText}>
+          {formatTo12Hour(schedule.hora_inicio?.substring(0, 5))} - {formatTo12Hour(schedule.hora_fin?.substring(0, 5))}
+        </Text>
+      </View>
+    </View>
+  );
+
   const renderStatsCard = (title, value, icon, color) => (
     <View style={[styles.statsCard, { borderLeftColor: color }]}>
       <View style={styles.statsIcon}>
@@ -174,15 +214,30 @@ const AdminDoctorDetail = ({ navigation, route }) => {
           </>
         ))}
 
-        {/* Specialties */}
-        {doctor.especialidades && doctor.especialidades.length > 0 && (
-          renderInfoSection('Especialidades', 'medkit-outline', (
-            doctor.especialidades.map((especialidad, index) => (
-              <View key={index} style={styles.specialtyItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-                <Text style={styles.specialtyText}>{especialidad.nombre}</Text>
-              </View>
-            ))
+        {/* Detailed Schedules */}
+        {doctor.horarios_medicos && doctor.horarios_medicos.length > 0 && (
+          renderInfoSection('Horarios de Atención', 'time-outline', (
+            <View style={styles.schedulesContainer}>
+              {doctor.horarios_medicos
+                .sort((a, b) => {
+                  const daysOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+                  return daysOrder.indexOf(a.dia_semana) - daysOrder.indexOf(b.dia_semana);
+                })
+                .map(schedule => renderScheduleItem(schedule))
+              }
+            </View>
+          ))
+        )}
+
+        {/* No Schedules Message */}
+        {(!doctor.horarios_medicos || doctor.horarios_medicos.length === 0) && (
+          renderInfoSection('Horarios de Atención', 'time-outline', (
+            <View style={styles.noSchedulesContainer}>
+              <Ionicons name="time-outline" size={40} color="#999" />
+              <Text style={styles.noSchedulesText}>
+                Este doctor aún no ha configurado sus horarios de atención
+              </Text>
+            </View>
           ))
         )}
 
@@ -204,18 +259,20 @@ const AdminDoctorDetail = ({ navigation, route }) => {
             )}
             {renderStatsCard(
               'Horarios Disponibles',
-              doctor.horariosMedicos?.length || 0,
+              doctor.horarios_medicos?.length || 0,
               'time-outline',
               '#FF9500'
             )}
             {renderStatsCard(
               'Citas Pendientes',
               doctor.citas?.filter(cita => cita.estado === 'pendiente').length || 0,
-              'clock-outline',
+              'time-outline',
               '#FF3B30'
             )}
           </View>
         </View>
+
+        
 
         {/* Recent Activity */}
         {doctor.citas && doctor.citas.length > 0 && (
@@ -410,6 +467,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  schedulesContainer: {
+    marginTop: 5,
+  },
+  scheduleItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  scheduleDay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  scheduleDayText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  scheduleTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scheduleTimeText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  noSchedulesContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  noSchedulesText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 22,
   },
 });
 

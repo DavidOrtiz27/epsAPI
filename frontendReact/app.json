@@ -7,23 +7,50 @@
     "icon": "./assets/mapu.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "splash": {
       "image": "./assets/mapu.png",
       "resizeMode": "cover",
       "backgroundColor": "#007AFF"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mapuapp.mapu"
     },
     "android": {
+      "useNextNotificationsApi": true,
+      "package": "com.mapuapp.mapu",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/mapu.png",
         "backgroundColor": "#007AFF"
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "favicon": "./assets/mapu.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7139d21d-656b-4c22-9e30-58ac748551f1"
+      }
     }
   }
 }

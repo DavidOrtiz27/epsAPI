@@ -66,7 +66,16 @@ class CitaController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Debug logging for date handling
+        \Log::info('Creating appointment with data:', $request->all());
+        \Log::info('Received fecha:', $request->fecha);
+        \Log::info('Server timezone:', config('app.timezone'));
+        \Log::info('Current server time:', now());
+
         $cita = Cita::create($request->all());
+
+        \Log::info('Saved appointment fecha in database:', $cita->fecha);
+        \Log::info('Fecha formatted as ISO:', $cita->fecha->toISOString());
 
         return response()->json($cita->load(['paciente.user', 'medico.user']), 201);
     }
@@ -185,6 +194,18 @@ class CitaController extends Controller
                         ->get();
         } else {
             $citas = collect();
+        }
+
+        // Debug logging for returned appointments
+        if ($citas->isNotEmpty()) {
+            \Log::info('Returning appointments to frontend:');
+            foreach ($citas->take(3) as $cita) {
+                \Log::info("Appointment ID {$cita->id}:");
+                \Log::info("  - Raw fecha from DB: {$cita->getRawOriginal('fecha')}");
+                \Log::info("  - Processed fecha: {$cita->fecha}");
+                \Log::info("  - ISO format: {$cita->fecha->toISOString()}");
+                \Log::info("  - JSON format: " . json_encode($cita->fecha));
+            }
         }
 
         return response()->json($citas);

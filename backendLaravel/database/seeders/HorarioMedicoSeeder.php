@@ -23,8 +23,14 @@ class HorarioMedicoSeeder extends Seeder
         }
 
         foreach ($doctors as $doctor) {
-            // Create schedules for weekdays (Monday to Friday)
-            $weekdays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+            // Check if this doctor already has schedules
+            if ($doctor->horariosMedicos()->count() > 0) {
+                $this->command->info("Doctor {$doctor->user->name} already has schedules. Skipping...");
+                continue;
+            }
+
+            // Create schedules for 4 specific days only
+            $weekdays = ['lunes', 'martes', 'jueves', 'domingo'];
 
             foreach ($weekdays as $day) {
                 HorarioMedico::create([
@@ -35,15 +41,7 @@ class HorarioMedicoSeeder extends Seeder
                 ]);
             }
 
-            // Saturday schedule (shorter hours)
-            HorarioMedico::create([
-                'medico_id' => $doctor->id,
-                'dia_semana' => 'sabado',
-                'hora_inicio' => '09:00',
-                'hora_fin' => '13:00',
-            ]);
-
-            $this->command->info("Created schedule for doctor: {$doctor->user->name}");
+            $this->command->info("Created 4 schedules for doctor: {$doctor->user->name}");
         }
     }
 }

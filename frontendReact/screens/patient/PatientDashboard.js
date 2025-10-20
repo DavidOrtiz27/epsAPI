@@ -24,6 +24,40 @@ const PatientDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   // Removed modal form state and dropdown states - now using PatientBookAppointment screen
 
+  // Helper function to properly handle timezone conversion
+  const formatAppointmentDateTime = (fechaString) => {
+    // Since Laravel is now configured to use America/Bogota timezone,
+    // dates should come in the correct local timezone
+    console.log('Dashboard - Formatting date string from backend:', fechaString);
+    
+    let date;
+    
+    if (fechaString.includes('T') && fechaString.includes('Z')) {
+      // ISO format with UTC timezone - convert to local
+      date = new Date(fechaString);
+    } else if (fechaString.includes('T')) {
+      // ISO format without timezone - assume it's already in local timezone
+      date = new Date(fechaString);
+    } else {
+      // Format like "2024-01-15 14:30:00" - assume it's in local timezone (Colombia)
+      date = new Date(fechaString.replace(' ', 'T'));
+    }
+    
+    console.log('Dashboard - Parsed date object:', date);
+    console.log('Dashboard - Local time string:', date.toLocaleString());
+    
+    return date;
+  };
+
+  const formatTime12Hour = (fechaString) => {
+    const date = formatAppointmentDateTime(fechaString);
+    return date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       loadDashboardData();
@@ -86,35 +120,36 @@ const PatientDashboard = () => {
     </View>
   );
 
-  const AppointmentCard = ({ appointment }) => (
-    <View style={styles.appointmentCard}>
-      <View style={styles.appointmentHeader}>
-        <Text style={styles.appointmentDate}>
-          {new Date(appointment.fecha).toLocaleDateString('es-ES', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </Text>
-        <View style={[styles.statusBadge, getStatusStyle(appointment.estado)]}>
-          <Text style={styles.statusText}>{getStatusText(appointment.estado)}</Text>
+  const AppointmentCard = ({ appointment }) => {
+    const appointmentDate = formatAppointmentDateTime(appointment.fecha);
+    
+    return (
+      <View style={styles.appointmentCard}>
+        <View style={styles.appointmentHeader}>
+          <Text style={styles.appointmentDate}>
+            {appointmentDate.toLocaleDateString('es-ES', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
+          <View style={[styles.statusBadge, getStatusStyle(appointment.estado)]}>
+            <Text style={styles.statusText}>{getStatusText(appointment.estado)}</Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.appointmentTime}>
-        {new Date(appointment.fecha).toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </Text>
-      <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
-      {appointment.medico && (
-        <Text style={styles.appointmentDoctor}>
-          Dr. {appointment.medico.user?.name || 'Médico asignado'}
+        <Text style={styles.appointmentTime}>
+          {formatTime12Hour(appointment.fecha)}
         </Text>
-      )}
-    </View>
-  );
+        <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
+        {appointment.medico && (
+          <Text style={styles.appointmentDoctor}>
+            Dr. {appointment.medico.user?.name || 'Médico asignado'}
+          </Text>
+        )}
+      </View>
+    );
+  };
 
   const getStatusStyle = (status) => {
     switch (status?.toLowerCase()) {
@@ -144,7 +179,7 @@ const PatientDashboard = () => {
 
   {/*filter of next appointments*/}
   const upcomingAppointments = appointments.filter(apt => {
-    const appointmentDate = new Date(apt.fecha);
+    const appointmentDate = formatAppointmentDateTime(apt.fecha);
     const now = new Date();
     const isFuture = appointmentDate >= now;
     const isActive = apt.estado?.toLowerCase() !== 'cancelada' && apt.estado?.toLowerCase() !== 'realizada';
@@ -152,9 +187,11 @@ const PatientDashboard = () => {
   });
 
   // Recent appointments (past appointments)
-  const recentAppointments = appointments.filter(apt =>
-    new Date(apt.fecha) < new Date() || apt.estado?.toLowerCase() === 'realizada'
-  ).slice(0, 3);
+  const recentAppointments = appointments.filter(apt => {
+    const appointmentDate = formatAppointmentDateTime(apt.fecha);
+    const now = new Date();
+    return appointmentDate < now || apt.estado?.toLowerCase() === 'realizada';
+  }).slice(0, 3);
 
 
   return (

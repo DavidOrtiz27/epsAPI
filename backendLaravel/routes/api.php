@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Patients can view their own medical history
         Route::get('/pacientes/historial', [HistorialClinicoController::class, 'miHistorial']);
+        Route::post('/pacientes/historial/create-sample', [HistorialClinicoController::class, 'createSampleData']);
 
         // Patients can view their own invoices
         Route::get('/pacientes/facturas', [FacturaController::class, 'misFacturas']);

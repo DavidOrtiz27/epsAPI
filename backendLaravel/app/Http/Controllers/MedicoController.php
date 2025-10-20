@@ -56,20 +56,28 @@ class MedicoController extends Controller
      */
     public function show(string $id)
     {
-        $user = Auth::user()->load('medico'); // Load medico relationship
+        try {
+            $user = Auth::user();
 
-        // Check if user has permission to view detailed doctor info
-        if (!$user->hasRole('admin') && !$user->hasRole('superadmin') &&
-            (!$user->hasRole('doctor') || !$user->medico || $user->medico->id != $id) &&
-            (!$user->paciente)) {
-            // Return limited info for regular patients
-            $medico = Medico::with(['user:id,name,email', 'especialidades'])->findOrFail($id);
-        } else {
-            // Return full info for admins and doctors viewing their own profile
-            $medico = Medico::with(['user', 'especialidades', 'horariosMedicos', 'citas.paciente.user'])->findOrFail($id);
+            // Check if user has permission to view detailed doctor info
+            if (!$user->hasRole('admin') && !$user->hasRole('superadmin') &&
+                (!$user->hasRole('doctor') || !$user->medico || $user->medico->id != $id) &&
+                (!$user->paciente)) {
+                // Return limited info for regular patients
+                $medico = Medico::with(['user:id,name,email'])->findOrFail($id);
+            } else {
+                // Return full info for admins and doctors viewing their own profile
+                // NOTE: Only loading 'horariosMedicos', NOT 'especialidades' to avoid conflicts
+                $medico = Medico::with(['user', 'horariosMedicos'])->findOrFail($id);
+            }
+
+            return response()->json($medico);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al obtener el doctor',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($medico);
     }
 
     /**
@@ -204,7 +212,8 @@ class MedicoController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $medico = $user->medico->load(['user', 'especialidades', 'horariosMedicos']);
+        // Load medico with user and schedules but NOT especialidades to avoid conflicts
+        $medico = $user->medico->load(['user', 'horariosMedicos']);
 
         return response()->json($medico);
     }
@@ -228,7 +237,8 @@ class MedicoController extends Controller
 
         $user->medico->update($request->only(['registro_profesional', 'especialidad', 'telefono']));
 
-        return response()->json($user->medico->load(['user', 'especialidades']));
+        // Return updated medico with user but WITHOUT especialidades to avoid conflicts
+        return response()->json($user->medico->load(['user']));
     }
 
     /**

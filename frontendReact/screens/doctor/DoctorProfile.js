@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -24,9 +25,15 @@ const DoctorProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Estados para especialidades
+  const [specialties, setSpecialties] = useState([]);
+  const [specialtyModalVisible, setSpecialtyModalVisible] = useState(false);
+  
   const [formData, setFormData] = useState({
     registro_profesional: '',
     especialidad: '',
+    selectedSpecialty: null,
     telefono: '',
   });
   const [securityFormData, setSecurityFormData] = useState({
@@ -45,7 +52,30 @@ const DoctorProfile = () => {
 
   useEffect(() => {
     loadDoctorData();
+    loadSpecialties();
   }, []);
+
+  const loadSpecialties = async () => {
+    try {
+      const specialtiesData = await apiService.getSpecialties();
+      setSpecialties(specialtiesData);
+    } catch (error) {
+      console.error('Error loading specialties:', error);
+    }
+  };
+
+  const selectSpecialty = (specialty) => {
+    setFormData({
+      ...formData,
+      especialidad: specialty.nombre,
+      selectedSpecialty: specialty
+    });
+    setSpecialtyModalVisible(false);
+    // Clear any existing error
+    if (errors.especialidad) {
+      setErrors(prev => ({ ...prev, especialidad: undefined }));
+    }
+  };
 
   const loadDoctorData = async () => {
     try {
@@ -57,6 +87,7 @@ const DoctorProfile = () => {
       setFormData({
         registro_profesional: doctorInfo.registro_profesional || '',
         especialidad: doctorInfo.especialidad || '',
+        selectedSpecialty: null, // Will be set from specialties list if needed
         telefono: doctorInfo.telefono || '',
       });
 
@@ -69,6 +100,7 @@ const DoctorProfile = () => {
       setFormData({
         registro_profesional: '',
         especialidad: '',
+        selectedSpecialty: null,
         telefono: '',
       });
       Alert.alert('Aviso', 'No se pudieron cargar los datos profesionales. Puedes editarlos manualmente.');
@@ -171,6 +203,7 @@ const DoctorProfile = () => {
       setFormData({
         registro_profesional: doctorData.registro_profesional || '',
         especialidad: doctorData.especialidad || '',
+        selectedSpecialty: null,
         telefono: doctorData.telefono || '',
       });
     }
@@ -239,6 +272,24 @@ const DoctorProfile = () => {
       Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
     }
   };
+
+  const renderSelector = (field, label, placeholder, value, onPress, displayValue, icon, error) => (
+    <View style={styles.inputContainer}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <TouchableOpacity
+        style={[styles.selector, error && styles.selectorError]}
+        onPress={onPress}
+        disabled={saving}
+      >
+        {icon && <View style={styles.selectorIcon}>{icon}</View>}
+        <Text style={[styles.selectorText, !value && styles.selectorPlaceholder]}>
+          {displayValue || placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={20} color="#666" />
+      </TouchableOpacity>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+    </View>
+  );
 
   const ProfileItem = ({ icon, label, value }) => (
     <View style={styles.profileItem}>
@@ -409,15 +460,16 @@ const DoctorProfile = () => {
                 icon={<Ionicons name="card-outline" size={20} color="#666" />}
               />
 
-              <CustomInput
-                label="Especialidad"
-                value={formData.especialidad}
-                onChangeText={(value) => updateFormData('especialidad', value)}
-                placeholder="Ingresa tu especialidad"
-                autoCapitalize="words"
-                error={errors.especialidad}
-                icon={<Ionicons name="school-outline" size={20} color="#666" />}
-              />
+              {renderSelector(
+                'especialidad',
+                'Especialidad',
+                'Selecciona tu especialidad',
+                formData.especialidad,
+                () => setSpecialtyModalVisible(true),
+                formData.selectedSpecialty ? formData.selectedSpecialty.nombre : formData.especialidad,
+                <Ionicons name="school-outline" size={20} color="#666" />,
+                errors.especialidad
+              )}
 
               <CustomInput
                 label="Teléfono"
@@ -530,6 +582,43 @@ const DoctorProfile = () => {
             </View>
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Specialty Selection Modal */}
+      <Modal
+        visible={specialtyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSpecialtyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.specialtyModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Especialidad</Text>
+              <TouchableOpacity
+                onPress={() => setSpecialtyModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={specialties}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.specialtyItem}
+                  onPress={() => selectSpecialty(item)}
+                >
+                  <Text style={styles.specialtyName}>{item.nombre}</Text>
+                  <Ionicons name="checkmark" size={20} color="#007AFF" />
+                </TouchableOpacity>
+              )}
+              style={styles.specialtyList}
+            />
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -793,6 +882,88 @@ const styles = StyleSheet.create({
   securitySection: {
     marginBottom: 32,
   },
-  });
-
-export default DoctorProfile;
+  // Selector styles
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 50,
+  },
+  selectorError: {
+    borderColor: '#FF3B30',
+  },
+  selectorIcon: {
+    marginRight: 12,
+  },
+  selectorText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  selectorPlaceholder: {
+    color: '#999',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  // Specialty modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  specialtyModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingTop: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  specialtyList: {
+    paddingHorizontal: 20,
+  },
+  specialtyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  specialtyName: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+});export default DoctorProfile;

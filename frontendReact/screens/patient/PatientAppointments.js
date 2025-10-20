@@ -22,6 +22,40 @@ const PatientAppointments = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('proximas'); // 'proximas', 'historial'
 
+  // Helper function to properly handle timezone conversion
+  const formatAppointmentDateTime = (fechaString) => {
+    // Since Laravel is now configured to use America/Bogota timezone,
+    // dates should come in the correct local timezone
+    console.log('Formatting date string from backend:', fechaString);
+    
+    let date;
+    
+    if (fechaString.includes('T') && fechaString.includes('Z')) {
+      // ISO format with UTC timezone - convert to local
+      date = new Date(fechaString);
+    } else if (fechaString.includes('T')) {
+      // ISO format without timezone - assume it's already in local timezone
+      date = new Date(fechaString);
+    } else {
+      // Format like "2024-01-15 14:30:00" - assume it's in local timezone (Colombia)
+      date = new Date(fechaString.replace(' ', 'T'));
+    }
+    
+    console.log('Parsed date object:', date);
+    console.log('Local time string:', date.toLocaleString());
+    
+    return date;
+  };
+
+  const formatTime12Hour = (fechaString) => {
+    const date = formatAppointmentDateTime(fechaString);
+    return date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       loadAppointments();
@@ -72,8 +106,16 @@ const PatientAppointments = () => {
   };
 
   const AppointmentCard = ({ appointment, showCancelButton = false, onCancel }) => {
-    const appointmentDate = new Date(appointment.fecha);
+    const appointmentDate = formatAppointmentDateTime(appointment.fecha);
     const now = new Date();
+    
+    // Debug logging for timezone issues
+    console.log('Original fecha from backend:', appointment.fecha);
+    console.log('Parsed appointmentDate:', appointmentDate);
+    console.log('appointmentDate UTC string:', appointmentDate.toISOString());
+    console.log('appointmentDate local string:', appointmentDate.toLocaleString());
+    console.log('Formatted time 12h:', formatTime12Hour(appointment.fecha));
+    
     const isUpcoming = appointmentDate >= now;
     const isCancellable = appointment.estado?.toLowerCase() !== 'cancelada' &&
                          appointment.estado?.toLowerCase() !== 'realizada';
@@ -83,7 +125,7 @@ const PatientAppointments = () => {
         {/* Fecha + Estado */}
         <View style={styles.appointmentHeader}>
           <Text style={styles.appointmentDate}>
-            {new Date(appointment.fecha).toLocaleDateString('es-ES', {
+            {appointmentDate.toLocaleDateString('es-ES', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -97,10 +139,7 @@ const PatientAppointments = () => {
 
         {/* Hora */}
         <Text style={styles.appointmentTime}>
-          {new Date(appointment.fecha).toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {formatTime12Hour(appointment.fecha)}
         </Text>
 
         {/* Motivo */}
@@ -167,7 +206,7 @@ const PatientAppointments = () => {
 
   const upcomingAppointments = appointments.filter(
     (apt) => {
-      const appointmentDate = new Date(apt.fecha);
+      const appointmentDate = formatAppointmentDateTime(apt.fecha);
       const now = new Date();
       const isFuture = appointmentDate >= now;
       const isActive = apt.estado?.toLowerCase() !== 'cancelada' && apt.estado?.toLowerCase() !== 'realizada';
@@ -177,7 +216,7 @@ const PatientAppointments = () => {
 
   const pastAppointments = appointments.filter(
     (apt) => {
-      const appointmentDate = new Date(apt.fecha);
+      const appointmentDate = formatAppointmentDateTime(apt.fecha);
       const now = new Date();
       const isPast = appointmentDate < now;
       const isCompleted = apt.estado?.toLowerCase() === 'realizada' || apt.estado?.toLowerCase() === 'cancelada';

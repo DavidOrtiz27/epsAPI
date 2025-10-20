@@ -198,14 +198,27 @@ const DoctorAppointmentDetail = () => {
         observaciones: medicalRecordForm.observaciones,
       };
 
-      await apiService.createMedicalRecord(recordData);
+      console.log('Sending medical record data:', recordData);
+      const response = await apiService.createMedicalRecord(recordData);
+      console.log('Medical record created successfully:', response);
+      
       Alert.alert('Éxito', 'Registro médico creado correctamente');
       setShowMedicalRecordModal(false);
       setMedicalRecordForm({ diagnostico: '', observaciones: '' });
       loadAppointmentData(); // Refresh medical records
     } catch (error) {
       console.error('Error creating medical record:', error);
-      Alert.alert('Error', 'No se pudo crear el registro médico');
+      console.error('Error details:', error.response?.data);
+      
+      let errorMessage = 'No se pudo crear el registro médico';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.errors) {
+        const errors = Object.values(error.response.data.errors).flat();
+        errorMessage = errors.join('\n');
+      }
+      
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -774,51 +787,206 @@ const DoctorAppointmentDetail = () => {
           </View>
         </View>
 
-        {/* Medical Records */}
+        {/* Medical Records with Enhanced Display */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Historial Médico</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Historial Médico</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>Ver todo</Text>
+              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+          
           {medicalRecords.length > 0 ? (
-            medicalRecords.slice(0, 3).map((record) => (
-              <View key={record.id} style={styles.recordCard}>
-                <Text style={styles.recordDate}>
-                  {new Date(record.fecha || record.created_at).toLocaleDateString('es-ES')}
-                </Text>
-                <Text style={styles.recordDiagnosis}>{record.diagnostico}</Text>
-                {record.observaciones && (
-                  <Text style={styles.recordObservations}>{record.observaciones}</Text>
-                )}
-              </View>
-            ))
+            <View style={styles.medicalContainer}>
+              {medicalRecords.slice(0, 3).map((record) => (
+                <View key={record.id} style={styles.enhancedRecordCard}>
+                  {/* Diagnóstico Principal */}
+                  <View style={styles.recordHeader}>
+                    <View style={styles.recordIcon}>
+                      <Ionicons name="medical" size={20} color="#007AFF" />
+                    </View>
+                    <View style={styles.recordHeaderContent}>
+                      <Text style={styles.recordDate}>
+                        {new Date(record.fecha || record.created_at).toLocaleDateString('es-ES')}
+                      </Text>
+                      <Text style={styles.recordDiagnosis}>{record.diagnostico}</Text>
+                      {record.observaciones && (
+                        <Text style={styles.recordObservations}>{record.observaciones}</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Tratamientos asociados */}
+                  {record.tratamientos && record.tratamientos.length > 0 && (
+                    <View style={styles.medicalSection}>
+                      <View style={styles.sectionDivider} />
+                      <View style={styles.medicalSectionHeader}>
+                        <Ionicons name="fitness" size={16} color="#FF9500" />
+                        <Text style={styles.medicalSectionTitle}>Tratamientos ({record.tratamientos.length})</Text>
+                      </View>
+                      {record.tratamientos.slice(0, 2).map((tratamiento) => (
+                        <View key={tratamiento.id} style={styles.treatmentItem}>
+                          <View style={styles.treatmentContent}>
+                            <Text style={styles.treatmentDescription}>{tratamiento.descripcion}</Text>
+                            <Text style={styles.treatmentDuration}>
+                              Duración: {tratamiento.duracion_dias} días
+                            </Text>
+                            
+                            {/* Recetas Médicas asociadas */}
+                            {tratamiento.receta_medica && tratamiento.receta_medica.length > 0 && (
+                              <View style={styles.prescriptionContainer}>
+                                <View style={styles.prescriptionHeader}>
+                                  <Ionicons name="medical-outline" size={14} color="#34C759" />
+                                  <Text style={styles.prescriptionTitle}>
+                                    Recetas ({tratamiento.receta_medica.length})
+                                  </Text>
+                                </View>
+                                {tratamiento.receta_medica.slice(0, 2).map((receta, index) => (
+                                  <View key={index} style={styles.prescriptionItem}>
+                                    <Text style={styles.prescriptionMedicine}>
+                                      {receta.medicamento?.nombre || 'Medicamento no especificado'}
+                                    </Text>
+                                    <View style={styles.prescriptionDetails}>
+                                      {receta.dosis && (
+                                        <Text style={styles.prescriptionDetail}>
+                                          Dosis: {receta.dosis}
+                                        </Text>
+                                      )}
+                                      {receta.frecuencia && (
+                                        <Text style={styles.prescriptionDetail}>
+                                          Frecuencia: {receta.frecuencia}
+                                        </Text>
+                                      )}
+                                      {receta.duracion && (
+                                        <Text style={styles.prescriptionDetail}>
+                                          Duración: {receta.duracion}
+                                        </Text>
+                                      )}
+                                    </View>
+                                    {receta.instrucciones && (
+                                      <Text style={styles.prescriptionInstructions}>
+                                        {receta.instrucciones}
+                                      </Text>
+                                    )}
+                                  </View>
+                                ))}
+                                {tratamiento.receta_medica.length > 2 && (
+                                  <Text style={styles.showMoreText}>
+                                    +{tratamiento.receta_medica.length - 2} medicamentos más
+                                  </Text>
+                                )}
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                      {record.tratamientos.length > 2 && (
+                        <TouchableOpacity style={styles.showMoreButton}>
+                          <Text style={styles.showMoreText}>
+                            Ver {record.tratamientos.length - 2} tratamientos más
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Exámenes (simulado por ahora) */}
+                  <View style={styles.medicalSection}>
+                    <View style={styles.sectionDivider} />
+                    <View style={styles.medicalSectionHeader}>
+                      <Ionicons name="analytics" size={16} color="#FF3B30" />
+                      <Text style={styles.medicalSectionTitle}>Exámenes</Text>
+                    </View>
+                    <Text style={styles.emptySubText}>No hay exámenes registrados</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
           ) : (
-            <Text style={styles.emptyText}>No hay registros médicos previos</Text>
+            <View style={styles.emptyMedicalContainer}>
+              <Ionicons name="document-text-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No hay registros médicos previos</Text>
+              <Text style={styles.emptySubText}>
+                Los registros médicos aparecerán aquí cuando se creen consultas
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Action Buttons */}
+        {/* Enhanced Action Buttons */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acciones Médicas</Text>
-          <View style={styles.actionGrid}>
-            <CustomButton
-              title="Registro Médico"
+          <View style={styles.enhancedActionGrid}>
+            
+            {/* Registro Médico */}
+            <TouchableOpacity 
+              style={[styles.enhancedActionCard, styles.medicalRecordAction]}
               onPress={() => setShowMedicalRecordModal(true)}
-              backgroundColor="#007AFF"
-              textColor="#fff"
-              style={styles.actionButton}
-            />
-            <CustomButton
-              title="Tratamiento + Receta"
+            >
+              <View style={styles.actionCardIcon}>
+                <Ionicons name="document-text" size={24} color="#007AFF" />
+              </View>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>Registro Médico</Text>
+                <Text style={styles.actionCardDescription}>
+                  Crear diagnóstico y observaciones
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+
+            {/* Tratamiento + Receta */}
+            <TouchableOpacity 
+              style={[styles.enhancedActionCard, styles.treatmentAction]}
               onPress={openTreatmentPrescriptionModal}
-              backgroundColor="#FF9500"
-              textColor="#fff"
-              style={styles.actionButton}
-            />
-            <CustomButton
-              title="Examen"
+            >
+              <View style={styles.actionCardIcon}>
+                <Ionicons name="fitness" size={24} color="#FF9500" />
+              </View>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>Tratamiento + Receta</Text>
+                <Text style={styles.actionCardDescription}>
+                  Prescribir tratamiento y medicamentos
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+
+            {/* Examen */}
+            <TouchableOpacity 
+              style={[styles.enhancedActionCard, styles.examAction]}
               onPress={() => setShowExamModal(true)}
-              backgroundColor="#FF3B30"
-              textColor="#fff"
-              style={styles.actionButton}
-            />
+            >
+              <View style={styles.actionCardIcon}>
+                <Ionicons name="analytics" size={24} color="#FF3B30" />
+              </View>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>Examen Médico</Text>
+                <Text style={styles.actionCardDescription}>
+                  Solicitar exámenes de laboratorio
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+
+            {/* Acciones rápidas adicionales */}
+            <View style={styles.quickActions}>
+              <TouchableOpacity style={styles.quickActionButton}>
+                <Ionicons name="call" size={20} color="#34C759" />
+                <Text style={styles.quickActionText}>Llamar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickActionButton}>
+                <Ionicons name="mail" size={20} color="#007AFF" />
+                <Text style={styles.quickActionText}>Email</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickActionButton}>
+                <Ionicons name="share" size={20} color="#5856D6" />
+                <Text style={styles.quickActionText}>Compartir</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -1715,6 +1883,240 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+  },
+  // Enhanced Medical Records Styles
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  medicalContainer: {
+    gap: 16,
+  },
+  enhancedRecordCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  recordHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  recordIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  recordHeaderContent: {
+    flex: 1,
+  },
+  medicalSection: {
+    marginTop: 16,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 12,
+  },
+  medicalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  medicalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  treatmentItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9500',
+  },
+  treatmentContent: {
+    flex: 1,
+  },
+  treatmentDescription: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  treatmentDuration: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+  },
+  prescriptionContainer: {
+    backgroundColor: '#f0fff4',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#34C759',
+  },
+  prescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  prescriptionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#34C759',
+    marginLeft: 4,
+  },
+  prescriptionMedicine: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  prescriptionItem: {
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8f5e8',
+  },
+  prescriptionDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  prescriptionDetail: {
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  prescriptionInstructions: {
+    fontSize: 12,
+    color: '#555',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  showMoreButton: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  showMoreText: {
+    fontSize: 13,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  emptyMedicalContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  emptySubText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  // Enhanced Action Cards Styles
+  enhancedActionGrid: {
+    gap: 12,
+  },
+  enhancedActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderLeftWidth: 4,
+  },
+  medicalRecordAction: {
+    borderLeftColor: '#007AFF',
+  },
+  treatmentAction: {
+    borderLeftColor: '#FF9500',
+  },
+  examAction: {
+    borderLeftColor: '#FF3B30',
+  },
+  actionCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  actionCardContent: {
+    flex: 1,
+  },
+  actionCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  actionCardDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontWeight: '500',
   },
 });
 

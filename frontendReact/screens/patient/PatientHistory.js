@@ -54,6 +54,20 @@ const PatientHistory = () => {
       });
     };
 
+    const formatDateTime = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }) + ' a las ' + date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
     const getStatusStyle = (status) => {
       switch (status?.toLowerCase()) {
         case 'confirmada':
@@ -82,62 +96,115 @@ const PatientHistory = () => {
 
     return (
       <View style={styles.historyCard}>
-        <View style={styles.appointmentHeader}>
-          <Text style={styles.appointmentDate}>
-            {record.cita && record.cita.fecha ? formatDate(record.cita.fecha) : formatDate(record.fecha || record.created_at)}
-          </Text>
-          <View style={styles.recordType}>
-            <Ionicons name={record.cita ? "medical" : "document-text-outline"} size={16} color="#007AFF" />
-            <Text style={styles.recordTypeText}>
-              {record.cita ? "Consulta" : "Registro"}
+        {/* Header mejorado con fecha y hora completa */}
+        <View style={styles.cardHeader}>
+          <View style={styles.dateTimeContainer}>
+            <Ionicons name="calendar" size={18} color="#007AFF" />
+            <Text style={styles.consultationDateTime}>
+              {formatDateTime(record.cita?.fecha || record.fecha || record.created_at)}
             </Text>
           </View>
+          {record.cita?.estado && (
+            <View style={[styles.statusBadge, getStatusStyle(record.cita.estado)]}>
+              <Text style={styles.statusText}>{getStatusText(record.cita.estado)}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Estado de la cita */}
-        {record.cita && record.cita.estado && (
-          <View style={[styles.statusBadge, getStatusStyle(record.cita.estado)]}>
-            <Text style={styles.statusText}>{getStatusText(record.cita.estado)}</Text>
+        {/* Información del médico */}
+        {record.cita?.medico?.name && (
+          <View style={styles.doctorSection}>
+            <Ionicons name="medical" size={16} color="#4CAF50" />
+            <Text style={styles.doctorName}>Dr. {record.cita.medico.name}</Text>
           </View>
         )}
 
-        {/* Información del médico */}
-        {record.cita && record.cita.medico && record.cita.medico.name && (
-          <Text style={styles.appointmentDoctor}>
-            Dr. {record.cita.medico.name}
-          </Text>
-        )}
-
-        {/* Motivo de la cita */}
-        {record.cita && record.cita.motivo && (
-          <Text style={styles.appointmentMotivo}>{record.cita.motivo}</Text>
+        {/* Motivo de la consulta */}
+        {record.cita?.motivo && (
+          <View style={styles.reasonSection}>
+            <Text style={styles.sectionLabel}>Motivo de consulta:</Text>
+            <Text style={styles.reasonText}>{record.cita.motivo}</Text>
+          </View>
         )}
 
         {/* Diagnóstico */}
         {record.diagnostico && (
           <View style={styles.diagnosisSection}>
-            <Text style={styles.sectionTitle}>Diagnóstico</Text>
-            <Text style={styles.diagnosis}>{record.diagnostico}</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="clipboard" size={16} color="#FF9800" />
+              <Text style={styles.sectionTitle}>Diagnóstico</Text>
+            </View>
+            <Text style={styles.diagnosisText}>{record.diagnostico}</Text>
           </View>
         )}
 
         {/* Tratamientos */}
         {record.tratamientos && Array.isArray(record.tratamientos) && record.tratamientos.length > 0 && (
           <View style={styles.treatmentsSection}>
-            <Text style={styles.sectionTitle}>Tratamientos</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="medical" size={16} color="#2196F3" />
+              <Text style={styles.sectionTitle}>Tratamientos prescritos ({record.tratamientos.length})</Text>
+            </View>
             {record.tratamientos
               .filter(tratamiento => tratamiento && tratamiento.descripcion)
               .map((tratamiento, index) => (
                 <View key={`treatment-${tratamiento.id || index}`} style={styles.treatmentItem}>
-                  <Text style={styles.treatmentText}>• {tratamiento.descripcion}</Text>
-                  {tratamiento.fecha_inicio && (
-                    <Text style={styles.treatmentDate}>
-                      {formatDate(tratamiento.fecha_inicio)}
-                      {tratamiento.fecha_fin && ` - ${formatDate(tratamiento.fecha_fin)}`}
-                    </Text>
+                  <View style={styles.treatmentHeader}>
+                    <Text style={styles.treatmentNumber}>{index + 1}.</Text>
+                    <Text style={styles.treatmentDescription}>{tratamiento.descripcion}</Text>
+                  </View>
+                  
+                  {/* Fechas del tratamiento */}
+                  {(tratamiento.fecha_inicio || tratamiento.fecha_fin) && (
+                    <View style={styles.treatmentDates}>
+                      {tratamiento.fecha_inicio && (
+                        <Text style={styles.treatmentDate}>
+                          ⏰ Inicio: {formatDate(tratamiento.fecha_inicio)}
+                        </Text>
+                      )}
+                      {tratamiento.fecha_fin && (
+                        <Text style={styles.treatmentDate}>
+                          ⏰ Fin: {formatDate(tratamiento.fecha_fin)}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Medicamentos prescritos */}
+                  {tratamiento.medicamentos && Array.isArray(tratamiento.medicamentos) && tratamiento.medicamentos.length > 0 && (
+                    <View style={styles.medicationsSection}>
+                      <Text style={styles.medicationsTitle}>💊 Medicamentos:</Text>
+                      {tratamiento.medicamentos.map((medicamento, medIndex) => (
+                        <View key={`med-${medicamento.id || medIndex}`} style={styles.medicationItem}>
+                          <Text style={styles.medicationName}>{medicamento.nombre}</Text>
+                          {medicamento.presentacion && (
+                            <Text style={styles.medicationDetail}>📋 {medicamento.presentacion}</Text>
+                          )}
+                          {medicamento.dosis && (
+                            <Text style={styles.medicationDetail}>💊 Dosis: {medicamento.dosis}</Text>
+                          )}
+                          {medicamento.frecuencia && (
+                            <Text style={styles.medicationDetail}>⏰ Frecuencia: {medicamento.frecuencia}</Text>
+                          )}
+                          {medicamento.duracion && (
+                            <Text style={styles.medicationDetail}>📅 Duración: {medicamento.duracion}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
                   )}
                 </View>
               ))}
+          </View>
+        )}
+
+        {/* Indicador si no hay información clínica */}
+        {!record.diagnostico && (!record.tratamientos || record.tratamientos.length === 0) && (
+          <View style={styles.noMedicalDataSection}>
+            <Ionicons name="information-circle-outline" size={16} color="#9E9E9E" />
+            <Text style={styles.noMedicalDataText}>
+              Consulta realizada - Información clínica no disponible
+            </Text>
           </View>
         )}
 
@@ -451,6 +518,125 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
+  },
+  // New styles for improved medical history
+  cardHeader: {
+    marginBottom: 12,
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  consultationDateTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 6,
+    flex: 1,
+  },
+  doctorSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  doctorName: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  reasonSection: {
+    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  reasonText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  diagnosisText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  treatmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  treatmentNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
+    marginRight: 8,
+    minWidth: 20,
+  },
+  treatmentDescription: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    fontWeight: '500',
+  },
+  treatmentDates: {
+    marginTop: 4,
+    marginLeft: 28,
+  },
+  medicationsSection: {
+    marginTop: 8,
+    marginLeft: 28,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CAF50',
+  },
+  medicationsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4CAF50',
+    marginBottom: 8,
+  },
+  medicationItem: {
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  medicationName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  medicationDetail: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  noMedicalDataSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  noMedicalDataText: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginLeft: 6,
+    fontStyle: 'italic',
   },
   });
 

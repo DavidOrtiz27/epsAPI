@@ -1,16 +1,62 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Configuración para desarrollo local con teléfono físico
-// Para teléfono físico, usar la IP de la máquina host
-const getApiBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    // Para teléfono físico Android, usar IP real de la máquina
-    return 'http://192.168.1.12:8000/api';
-    //return 'http://10.2.234.89:8000/api';
+// =================================================================
+// 🚀 CONFIGURACIÓN AUTOMÁTICA DE API 
+// Detecta automáticamente si estás en emulador o dispositivo físico
+// =================================================================
+
+// Configuración de URLs para cada entorno
+const API_CONFIG = {
+  // 🖥️  Para EMULADOR Android (AVD)
+  EMULATOR: 'http://10.0.2.2:8000/api',
+  
+  // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
+  PHYSICAL_DEVICE: 'http://10.2.235.205:8000/api',
+  
+  // 💻 Para DESARROLLO LOCAL (web/desktop)
+  LOCAL: 'http://localhost:8000/api',
+  
+  // 🌐 Para PRODUCCIÓN (servidor remoto)
+  PRODUCTION: 'https://tu-servidor-produccion.com/api'
+};
+
+// =================================================================
+// 🔍 DETECCIÓN AUTOMÁTICA DE ENTORNO
+// =================================================================
+const detectEnvironment = () => {
+  if (Platform.OS === 'web') {
+    return 'LOCAL';
   }
-  // Para iOS simulator o desarrollo web
-  return 'http://localhost:8000/api';
+  
+  if (Platform.OS === 'android') {
+    // Detectar si es emulador Android
+    const isEmulator = Platform.constants?.Brand === 'google' && 
+                      Platform.constants?.Model?.includes('sdk');
+    
+    return isEmulator ? 'EMULATOR' : 'PHYSICAL_DEVICE';
+  }
+  
+  if (Platform.OS === 'ios') {
+    // Para iOS, detectar simulador vs dispositivo físico
+    const isSimulator = Platform.constants?.interfaceIdiom === 'simulator' ||
+                       Platform.constants?.model?.includes('Simulator');
+    
+    return isSimulator ? 'EMULATOR' : 'PHYSICAL_DEVICE';
+  }
+  
+  return 'LOCAL';
+};
+
+const getApiBaseUrl = () => {
+  const environment = detectEnvironment();
+  const url = API_CONFIG[environment];
+  
+  // Log para debugging - puedes comentar estas líneas en producción
+  console.log('🌐 API Environment:', environment);
+  console.log('🔗 API URL:', url);
+  
+  return url;
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -22,6 +68,9 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    console.log('🌐 Making API request to:', url);
+    console.log('📱 Device type detected:', detectEnvironment());
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -37,12 +86,17 @@ class ApiService {
     }
 
     try {
+      console.log('Request config:', config);
       const response = await fetch(url, config);
+      console.log('Response status:', response.status);
+      
       let data;
 
       try {
         data = await response.json();
+        console.log('Response data:', data);
       } catch (parseError) {
+        console.log('JSON parse error:', parseError);
         // If response is not JSON, create a generic error
         data = { message: 'Error del servidor' };
       }
@@ -193,7 +247,18 @@ class ApiService {
   }
 
   async getPatientAppointments() {
-    return await this.request('/pacientes/citas');
+    const appointments = await this.request('/pacientes/citas');
+    console.log('Raw appointments received from backend:', appointments);
+    if (appointments && appointments.length > 0) {
+      console.log('First appointment date example:', appointments[0].fecha);
+    }
+    return appointments;
+  }
+
+  async createSampleMedicalHistory() {
+    return await this.request('/pacientes/historial/create-sample', {
+      method: 'POST',
+    });
   }
 
   async getPatientHistory() {
@@ -239,7 +304,8 @@ class ApiService {
         clinicalHistory.forEach((record, index) => {
           console.log(`Record ${index}: ID=${record.id}, Cita=${record.cita?.id || 'null'}, Tratamientos=${record.tratamientos?.length || 0}`, {
             diagnostico: record.diagnostico,
-            tratamientos: record.tratamientos
+            tratamientos: record.tratamientos,
+            medicamentos: record.tratamientos?.map(t => t.medicamentos?.length || 0)
           });
         });
       }
@@ -406,10 +472,20 @@ class ApiService {
   }
 
   async createAppointment(appointmentData) {
-    return await this.request('/pacientes/citas', {
+    console.log('Sending appointment data to backend:', appointmentData);
+    console.log('Fecha being sent:', appointmentData.fecha);
+    
+    const result = await this.request('/pacientes/citas', {
       method: 'POST',
       body: JSON.stringify(appointmentData),
     });
+    
+    console.log('Appointment creation response:', result);
+    if (result && result.fecha) {
+      console.log('Created appointment fecha from backend:', result.fecha);
+    }
+    
+    return result;
   }
 
   async cancelAppointment(appointmentId) {

@@ -72,20 +72,22 @@ const PatientBookAppointment = ({ navigation }) => {
     setFilteredDoctors(filtered);
   };
 
-  const loadAvailableSlots = async (doctorId, date) => {
+    const loadAvailableSlots = async (doctorId, date) => {
     try {
-      setLoading(true);
+      console.log('Loading available slots for doctor:', doctorId, 'on date:', date);
       const response = await apiService.getAvailableSlots(doctorId, date);
-      // Remove duplicates and sort slots
-      const uniqueSlots = [...new Set(response.available_slots || [])].sort();
+      
+      // Remove duplicates
+      const uniqueSlots = [...new Set(response.available_slots)];
       setAvailableSlots(uniqueSlots);
-      console.log('Available slots for', date, ':', uniqueSlots);
+      console.log('Available slots from backend (24h format):', uniqueSlots);
+      console.log('Example slot conversions:');
+      uniqueSlots.slice(0, 3).forEach(slot => {
+        console.log(`${slot} (24h) → ${formatTo12Hour(slot)} (12h)`);
+      });
     } catch (error) {
       console.error('Error loading available slots:', error);
       setAvailableSlots([]);
-      Alert.alert('Error', 'No se pudieron cargar los horarios disponibles');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -108,9 +110,12 @@ const PatientBookAppointment = ({ navigation }) => {
     setSelectedSlot(null);
   };
 
-  const handleDateSelect = (date) => {
+    const handleDateSelect = (date) => {
+    console.log('Selected date (formatted):', date);
+    console.log('Original date object:', new Date(date + ' 00:00:00'));
     setSelectedDate(date);
     setSelectedSlot(null);
+    setAvailableSlots([]);
     if (selectedDoctor) {
       loadAvailableSlots(selectedDoctor.id, date);
     }
@@ -129,6 +134,13 @@ const PatientBookAppointment = ({ navigation }) => {
         fecha: `${selectedDate} ${selectedSlot}:00`,
         motivo: motivo.trim(),
       };
+      
+      console.log('Booking appointment with data:', appointmentData);
+      console.log('Selected date string being sent:', selectedDate);
+      console.log('Selected slot (24h format):', selectedSlot);
+      console.log('Selected slot (12h format):', formatTo12Hour(selectedSlot));
+      console.log('Final fecha being sent:', appointmentData.fecha);
+      
       await apiService.createAppointment(appointmentData);
 
       // Clear all form state
@@ -172,21 +184,63 @@ const PatientBookAppointment = ({ navigation }) => {
   const generateNextDates = () => {
     const dates = [];
     const today = new Date();
+    console.log('Today (original):', today);
+    console.log('Today timezone offset:', today.getTimezoneOffset());
+    
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);
+      
+      if (i < 3) { // Log first 3 dates for debugging
+        console.log(`Date ${i}:`, date, 'formatted:', formatDate(date));
+      }
     }
     return dates;
   };
 
-  const formatDate = (date) => date.toISOString().split('T')[0];
+  const formatDate = (date) => {
+    // Use local timezone instead of UTC to avoid date offset issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const formatDisplayDate = (date) =>
     date.toLocaleDateString('es-ES', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     });
+
+  // Convert 24-hour format to 12-hour AM/PM format
+  const formatTo12Hour = (time24) => {
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  // Separate time slots into morning and afternoon
+  const separateTimeSlots = (slots) => {
+    const morning = [];
+    const afternoon = [];
+    
+    slots.forEach(slot => {
+      const [hours] = slot.split(':');
+      const hour = parseInt(hours, 10);
+      
+      if (hour < 12) {
+        morning.push(slot);
+      } else {
+        afternoon.push(slot);
+      }
+    });
+    
+    return { morning, afternoon };
+  };
 
   const nextDates = generateNextDates();
 
@@ -413,24 +467,74 @@ const PatientBookAppointment = ({ navigation }) => {
             {loading ? (
               <Text style={styles.loadingText}>Cargando horarios...</Text>
             ) : availableSlots.length > 0 ? (
-              <View style={styles.slotsContainer}>
-                {availableSlots.map((slot, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.slotCard,
-                      selectedSlot === slot && styles.slotCardSelected,
-                    ]}
-                    onPress={() => setSelectedSlot(slot)}
-                  >
-                    <Text style={[
-                      styles.slotText,
-                      selectedSlot === slot && styles.slotTextSelected,
-                    ]}>
-                      {slot}:00
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.timeSlotsContainer}>
+                {(() => {
+                  const { morning, afternoon } = separateTimeSlots(availableSlots);
+                  
+                  return (
+                    <>
+                      {/* Morning Slots */}
+                      {morning.length > 0 && (
+                        <View style={styles.timeSection}>
+                          <View style={styles.timeSectionHeader}>
+                            <Ionicons name="sunny" size={20} color="#FFA500" />
+                            <Text style={styles.timeSectionTitle}>Mañana</Text>
+                            <Text style={styles.timeSectionSubtitle}>(hasta 12:00 PM)</Text>
+                          </View>
+                          <View style={styles.slotsContainer}>
+                            {morning.map((slot, index) => (
+                              <TouchableOpacity
+                                key={`morning-${index}`}
+                                style={[
+                                  styles.slotCard,
+                                  selectedSlot === slot && styles.slotCardSelected,
+                                ]}
+                                onPress={() => setSelectedSlot(slot)}
+                              >
+                                <Text style={[
+                                  styles.slotText,
+                                  selectedSlot === slot && styles.slotTextSelected,
+                                ]}>
+                                  {formatTo12Hour(slot)}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Afternoon Slots */}
+                      {afternoon.length > 0 && (
+                        <View style={styles.timeSection}>
+                          <View style={styles.timeSectionHeader}>
+                            <Ionicons name="partly-sunny" size={20} color="#FF6B6B" />
+                            <Text style={styles.timeSectionTitle}>Tarde</Text>
+                            <Text style={styles.timeSectionSubtitle}>(desde 12:00 PM)</Text>
+                          </View>
+                          <View style={styles.slotsContainer}>
+                            {afternoon.map((slot, index) => (
+                              <TouchableOpacity
+                                key={`afternoon-${index}`}
+                                style={[
+                                  styles.slotCard,
+                                  selectedSlot === slot && styles.slotCardSelected,
+                                ]}
+                                onPress={() => setSelectedSlot(slot)}
+                              >
+                                <Text style={[
+                                  styles.slotText,
+                                  selectedSlot === slot && styles.slotTextSelected,
+                                ]}>
+                                  {formatTo12Hour(slot)}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </>
+                  );
+                })()}
               </View>
             ) : (
               <Text style={styles.emptyText}>
@@ -480,7 +584,7 @@ const PatientBookAppointment = ({ navigation }) => {
                 <Text style={styles.summaryLabel}>Fecha:</Text> {selectedDate}
               </Text>
               <Text style={styles.summaryText}>
-                <Text style={styles.summaryLabel}>Hora:</Text> {selectedSlot}:00
+                <Text style={styles.summaryLabel}>Hora:</Text> {formatTo12Hour(selectedSlot)}
               </Text>
             </View>
 
@@ -805,6 +909,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     padding: 20,
+  },
+  timeSlotsContainer: {
+    gap: 20,
+  },
+  timeSection: {
+    marginBottom: 20,
+  },
+  timeSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  timeSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 8,
+  },
+  timeSectionSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+    fontStyle: 'italic',
   },
   slotsContainer: {
     flexDirection: 'row',
