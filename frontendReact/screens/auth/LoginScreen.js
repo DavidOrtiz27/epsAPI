@@ -119,6 +119,13 @@ const LoginScreen = () => {
               icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
             />
 
+            {/* Forgot Password Link */}
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                <Text style={styles.forgotPasswordLink}>¿Olvidaste tu contraseña?</Text>
+              </TouchableOpacity>
+            </View>
+
             <CustomButton
               title="Iniciar Sesión"
               onPress={handleLogin}
@@ -187,6 +194,15 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotPasswordLink: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
   },
   loginButton: {
     marginTop: 8,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cita;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -45,9 +46,21 @@ class CitaController extends Controller
         $validator = Validator::make($request->all(), [
             'paciente_id' => 'required|exists:pacientes,id',
             'medico_id' => 'required|exists:medicos,id',
-            'fecha' => 'required|date|after:now',
+            'fecha' => 'required|date',
             'motivo' => 'nullable|string',
         ]);
+
+        // Custom validation for appointment date
+        $appointmentDate = Carbon::parse($request->fecha);
+        $now = Carbon::now();
+        
+        if ($appointmentDate->isPast()) {
+            return response()->json([
+                'errors' => [
+                    'fecha' => ['La fecha de la cita debe ser futura. Fecha seleccionada: ' . $appointmentDate->format('Y-m-d H:i') . ', Hora actual: ' . $now->format('Y-m-d H:i')]
+                ]
+            ], 422);
+        }
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -67,15 +80,15 @@ class CitaController extends Controller
         }
 
         // Debug logging for date handling
-        \Log::info('Creating appointment with data:', $request->all());
-        \Log::info('Received fecha:', $request->fecha);
-        \Log::info('Server timezone:', config('app.timezone'));
-        \Log::info('Current server time:', now());
+        \Log::info('Creating appointment with data:', ['data' => $request->all()]);
+        \Log::info('Received fecha: ' . $request->fecha);
+        \Log::info('Server timezone: ' . config('app.timezone'));
+        \Log::info('Current server time: ' . now());
 
         $cita = Cita::create($request->all());
 
-        \Log::info('Saved appointment fecha in database:', $cita->fecha);
-        \Log::info('Fecha formatted as ISO:', $cita->fecha->toISOString());
+        \Log::info('Saved appointment fecha in database: ' . $cita->fecha);
+        \Log::info('Fecha formatted as ISO: ' . $cita->fecha->toISOString());
 
         return response()->json($cita->load(['paciente.user', 'medico.user']), 201);
     }
@@ -105,10 +118,24 @@ class CitaController extends Controller
         $validator = Validator::make($request->all(), [
             'paciente_id' => 'sometimes|exists:pacientes,id',
             'medico_id' => 'sometimes|exists:medicos,id',
-            'fecha' => 'sometimes|date|after:now',
+            'fecha' => 'sometimes|date',
             'estado' => 'sometimes|in:pendiente,confirmada,cancelada,realizada',
             'motivo' => 'nullable|string',
         ]);
+
+        // Custom validation for appointment date (only if fecha is being updated)
+        if ($request->has('fecha')) {
+            $appointmentDate = Carbon::parse($request->fecha);
+            $now = Carbon::now();
+            
+            if ($appointmentDate->isPast()) {
+                return response()->json([
+                    'errors' => [
+                        'fecha' => ['La fecha de la cita debe ser futura. Fecha seleccionada: ' . $appointmentDate->format('Y-m-d H:i') . ', Hora actual: ' . $now->format('Y-m-d H:i')]
+                    ]
+                ], 422);
+            }
+        }
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);

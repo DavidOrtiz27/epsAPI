@@ -12,11 +12,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
-import CustomInput from '../../components/ui/CustomInput';
-import CustomButton from '../../components/ui/CustomButton';
+import { CustomInput, CustomButton, CustomDatePicker, CustomGenderPicker } from '../../components/ui';
 
 const PatientProfile = () => {
   const { user, logout, updateUser } = useAuth();
@@ -26,7 +25,7 @@ const PatientProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [formData, setFormData] = useState({
     documento: '',
     telefono: '',
@@ -171,17 +170,7 @@ const PatientProfile = () => {
     setShowEditModal(false);
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      const formattedDate = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-      updateFormData('fecha_nacimiento', formattedDate);
-    }
-  };
 
-  const openDatePicker = () => {
-    setShowDatePicker(true);
-  };
 
   const updateSecurityFormData = (field, value) => {
     setSecurityFormData(prev => ({ ...prev, [field]: value }));
@@ -418,31 +407,22 @@ const PatientProfile = () => {
                icon={<Ionicons name="location-outline" size={20} color="#666" />}
              />
 
-             <View style={styles.dateInputContainer}>
-               <Text style={styles.dateInputLabel}>Fecha de Nacimiento</Text>
-               <TouchableOpacity
-                 style={[styles.dateInput, errors.fecha_nacimiento && styles.dateInputError]}
-                 onPress={openDatePicker}
-               >
-                 <Ionicons name="calendar-outline" size={20} color="#666" />
-                 <Text style={[styles.dateInputText, !formData.fecha_nacimiento && styles.dateInputPlaceholder]}>
-                   {formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : 'Seleccionar fecha'}
-                 </Text>
-               </TouchableOpacity>
-               {errors.fecha_nacimiento && (
-                 <Text style={styles.errorText}>{errors.fecha_nacimiento}</Text>
-               )}
-             </View>
+             <CustomDatePicker
+               label="Fecha de Nacimiento"
+               value={formData.fecha_nacimiento}
+               onDateChange={(date) => updateFormData('fecha_nacimiento', date)}
+               placeholder="Seleccionar fecha de nacimiento"
+               error={errors.fecha_nacimiento}
+               maximumDate={new Date()}
+               minimumDate={new Date(new Date().getFullYear() - 120, 0, 1)}
+             />
 
-             <CustomInput
-               label="Género (M/F/O)"
+             <CustomGenderPicker
+               label="Género"
                value={formData.genero}
-               onChangeText={(value) => updateFormData('genero', value.toUpperCase())}
-               placeholder="M (Masculino), F (Femenino), O (Otro)"
-               maxLength={1}
-               autoCapitalize="characters"
+               onGenderChange={(gender) => updateFormData('genero', gender)}
+               placeholder="Seleccionar género"
                error={errors.genero}
-               icon={<Ionicons name="male-female-outline" size={20} color="#666" />}
              />
 
              <View style={styles.modalActions}>
@@ -467,16 +447,7 @@ const PatientProfile = () => {
      </Modal>
 
      {/* Date Picker */}
-     {showDatePicker && (
-       <DateTimePicker
-         value={formData.fecha_nacimiento ? new Date(formData.fecha_nacimiento + 'T00:00:00') : new Date()}
-         mode="date"
-         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-         onChange={handleDateChange}
-         maximumDate={new Date()}
-         minimumDate={new Date(1900, 0, 1)}
-       />
-     )}
+
 
      {/* Security Settings Modal */}
      <Modal

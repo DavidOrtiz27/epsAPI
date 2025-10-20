@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
+import { CustomInput } from '../../components/ui';
 import apiService from '../../services/api/api';
 
 const AdminDoctorForm = ({ navigation, route }) => {
@@ -202,25 +203,19 @@ const AdminDoctorForm = ({ navigation, route }) => {
   };
 
   const renderInput = (field, label, placeholder, keyboardType = 'default', multiline = false, secureTextEntry = false) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[
-          styles.input,
-          multiline && styles.multilineInput,
-          errors[field] && styles.inputError
-        ]}
-        placeholder={placeholder}
-        value={formData[field]}
-        onChangeText={(value) => updateFormData(field, value)}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-        editable={!saving}
-        secureTextEntry={secureTextEntry}
-      />
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-    </View>
+    <CustomInput
+      label={label}
+      placeholder={placeholder}
+      value={formData[field]}
+      onChangeText={(value) => updateFormData(field, value)}
+      keyboardType={keyboardType}
+      multiline={multiline}
+      numberOfLines={multiline ? 3 : 1}
+      editable={!saving}
+      secureTextEntry={secureTextEntry}
+      error={errors[field]}
+      icon={secureTextEntry ? <Ionicons name="lock-closed-outline" size={20} color="#666" /> : null}
+    />
   );
 
   const renderSelector = (field, label, placeholder, value, onPress, displayValue) => (

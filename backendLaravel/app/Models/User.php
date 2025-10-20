@@ -88,4 +88,43 @@ class User extends Authenticatable
     {
         return $this->roles()->whereIn('name', $roles)->exists();
     }
+
+    /**
+     * Check if email is valid and exists in the database
+     */
+    public static function isValidEmailForReset(string $email): bool
+    {
+        // Normalizar email
+        $email = strtolower(trim($email));
+        
+        // Verificar formato básico
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+        
+        // Verificar que existe en la base de datos y está activo
+        return self::where('email', $email)
+                  ->where('status', 'active')
+                  ->exists();
+    }
+
+    /**
+     * Get active user by email
+     */
+    public static function getActiveUserByEmail(string $email): ?self
+    {
+        $email = strtolower(trim($email));
+        
+        return self::where('email', $email)
+                  ->where('status', 'active')
+                  ->first();
+    }
+
+    /**
+     * Scope para filtrar solo usuarios activos
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 }

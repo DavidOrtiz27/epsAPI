@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../../utils/context/AuthContext';
 
 // Import screens
-import { LoginScreen, RegisterScreen } from '../../screens/auth';
+import { LoginScreen, RegisterScreen, ForgotPasswordScreen, ResetPasswordScreen } from '../../screens/auth';
 import PatientTabs from '../patient/PatientTabs';
 import DoctorTabs from '../doctor/DoctorTabs';
 import AdminTabs from '../admin/AdminTabs';
@@ -49,6 +49,16 @@ const AppNavigator = () => {
                 title: 'Registro de Paciente',
                 headerBackTitle: 'Volver'
               }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ headerShown: false }}
             />
           </>
         ) : (

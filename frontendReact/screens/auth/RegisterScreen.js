@@ -13,8 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { showErrorAlert } from '../../utils/errorHandler';
-import CustomInput from '../../components/ui/CustomInput';
-import CustomButton from '../../components/ui/CustomButton';
+import { CustomInput, CustomButton, CustomDatePicker, CustomGenderPicker } from '../../components/ui';
 
 const RegisterScreen = () => {
   const [formData, setFormData] = useState({
@@ -55,8 +54,27 @@ const RegisterScreen = () => {
 
     if (!formData.password.trim()) {
       newErrors.password = 'La contraseña es requerida';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+    } else {
+      // Validación detallada de contraseña
+      const password = formData.password;
+      const passwordErrors = [];
+
+      if (password.length < 8) {
+        passwordErrors.push('Mínimo 8 caracteres');
+      }
+      if (!/[a-z]/.test(password)) {
+        passwordErrors.push('Al menos una minúscula (a-z)');
+      }
+      if (!/[A-Z]/.test(password)) {
+        passwordErrors.push('Al menos una MAYÚSCULA (A-Z)');
+      }
+      if (!/\d/.test(password)) {
+        passwordErrors.push('Al menos un número (0-9)');
+      }
+
+      if (passwordErrors.length > 0) {
+        newErrors.password = 'Falta: ' + passwordErrors.join(', ');
+      }
     }
 
     if (!formData.documento.trim()) {
@@ -65,8 +83,24 @@ const RegisterScreen = () => {
       newErrors.documento = 'El documento debe contener solo números';
     }
 
-    if (formData.fecha_nacimiento && !/^\d{4}-\d{2}-\d{2}$/.test(formData.fecha_nacimiento)) {
-      newErrors.fecha_nacimiento = 'Formato de fecha: YYYY-MM-DD';
+    // Validate fecha_nacimiento
+    if (formData.fecha_nacimiento) {
+      const date = new Date(formData.fecha_nacimiento);
+      if (isNaN(date.getTime())) {
+        newErrors.fecha_nacimiento = 'Fecha inválida';
+      } else {
+        const today = new Date();
+        const age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        
+        if (date > today) {
+          newErrors.fecha_nacimiento = 'La fecha no puede ser futura';
+        } else if (age < 18 || (age === 18 && monthDiff < 0)) {
+          newErrors.fecha_nacimiento = 'Debes tener al menos 18 años';
+        } else if (age > 120) {
+          newErrors.fecha_nacimiento = 'Fecha de nacimiento no válida';
+        }
+      }
     }
 
     if (formData.genero && !['M', 'F', 'O'].includes(formData.genero.toUpperCase())) {
@@ -79,6 +113,7 @@ const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (!validateForm()) return;
+    if (loading) return; // Prevent multiple calls
 
     setLoading(true);
     try {
@@ -98,20 +133,58 @@ const RegisterScreen = () => {
         }
       });
 
-      await register(registerData);
+      const response = await register(registerData);
+      
+      console.log('Registration successful:', response);
 
-      Alert.alert(
-        'Registro exitoso',
-        'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.',
-        [
-          {
-            text: 'Ir al Login',
-            onPress: () => navigation.navigate('Login'),
-          },
-        ]
-      );
+      // If registration includes auto-login (token provided), no need to redirect to login
+      if (response.token && response.user) {
+        Alert.alert(
+          'Registro exitoso',
+          'Tu cuenta ha sido creada y has iniciado sesión automáticamente.',
+          [{ text: 'Continuar', onPress: () => {} }]
+        );
+        // The AuthContext will handle the navigation automatically
+      } else {
+        Alert.alert(
+          'Registro exitoso',
+          'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.',
+          [
+            {
+              text: 'Ir al Login',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ]
+        );
+      }
     } catch (error) {
-      showErrorAlert(error, 'Ocurrió un error al crear tu cuenta. Por favor, intenta nuevamente.');
+      console.error('Registration error:', error);
+      
+      let errorMessage = 'Ocurrió un error al crear tu cuenta. Por favor, intenta nuevamente.';
+      let errorDetails = '';
+      
+      // Si es un error de validación de contraseña, mostrar requisitos
+      if (error.message?.includes('requisitos de seguridad') || error.message?.includes('validación')) {
+        errorMessage = 'La contraseña no cumple con los requisitos';
+        
+        // Construir lista de requisitos
+        const requirements = [
+          '• Mínimo 8 caracteres',
+          '• Al menos una letra minúscula (a-z)',
+          '• Al menos una letra MAYÚSCULA (A-Z)',
+          '• Al menos un número (0-9)'
+        ];
+        
+        errorDetails = '\n\nRequisitos de contraseña:\n' + requirements.join('\n') + '\n\nEjemplo: MiClave123';
+      } else if (error.message?.includes('email') && error.message?.includes('taken')) {
+        errorMessage = 'Este correo electrónico ya está registrado. Intenta con otro correo.';
+      } else if (error.message?.includes('conexión')) {
+        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage + errorDetails);
     } finally {
       setLoading(false);
     }
@@ -168,6 +241,8 @@ const RegisterScreen = () => {
                 icon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
               />
 
+              <PasswordRequirements password={formData.password} />
+
               <CustomInput
                 label="Número de documento"
                 value={formData.documento}
@@ -197,29 +272,29 @@ const RegisterScreen = () => {
                 icon={<Ionicons name="location-outline" size={20} color="#666" />}
               />
 
-              <CustomInput
+              <CustomDatePicker
                 label="Fecha de nacimiento"
                 value={formData.fecha_nacimiento}
-                onChangeText={(value) => updateFormData('fecha_nacimiento', value)}
-                placeholder="YYYY-MM-DD"
+                onDateChange={(date) => updateFormData('fecha_nacimiento', date)}
+                placeholder="Seleccionar fecha de nacimiento"
                 error={errors.fecha_nacimiento}
-                icon={<Ionicons name="calendar-outline" size={20} color="#666" />}
+                maximumDate={new Date()} // No fechas futuras
+                minimumDate={new Date(new Date().getFullYear() - 120, 0, 1)} // Máximo 120 años atrás
               />
 
-              <CustomInput
+              <CustomGenderPicker
                 label="Género"
                 value={formData.genero}
-                onChangeText={(value) => updateFormData('genero', value)}
-                placeholder="M (Masculino), F (Femenino), O (Otro)"
-                autoCapitalize="characters"
+                onGenderChange={(gender) => updateFormData('genero', gender)}
+                placeholder="Seleccionar género"
                 error={errors.genero}
-                icon={<Ionicons name="male-female-outline" size={20} color="#666" />}
               />
 
               <CustomButton
                 title="Crear Cuenta"
                 onPress={handleRegister}
                 loading={loading}
+                disabled={loading}
                 style={styles.registerButton}
               />
             </View>
@@ -227,6 +302,58 @@ const RegisterScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+};
+
+// Componente para mostrar requisitos de contraseña
+const PasswordRequirements = ({ password }) => {
+  const requirements = [
+    { 
+      key: 'length', 
+      label: 'Mínimo 8 caracteres', 
+      test: (pwd) => pwd.length >= 8 
+    },
+    { 
+      key: 'lowercase', 
+      label: 'Una letra minúscula (a-z)', 
+      test: (pwd) => /[a-z]/.test(pwd) 
+    },
+    { 
+      key: 'uppercase', 
+      label: 'Una letra MAYÚSCULA (A-Z)', 
+      test: (pwd) => /[A-Z]/.test(pwd) 
+    },
+    { 
+      key: 'number', 
+      label: 'Un número (0-9)', 
+      test: (pwd) => /\d/.test(pwd) 
+    },
+  ];
+
+  if (!password) return null;
+
+  return (
+    <View style={styles.passwordRequirements}>
+      <Text style={styles.requirementsTitle}>Requisitos de contraseña:</Text>
+      {requirements.map((req) => {
+        const isValid = req.test(password);
+        return (
+          <View key={req.key} style={styles.requirementItem}>
+            <Ionicons 
+              name={isValid ? "checkmark-circle" : "close-circle"} 
+              size={16} 
+              color={isValid ? "#22c55e" : "#ef4444"} 
+            />
+            <Text style={[
+              styles.requirementText, 
+              { color: isValid ? "#22c55e" : "#6b7280" }
+            ]}>
+              {req.label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
   );
 };
 
@@ -268,6 +395,31 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: 16,
     marginBottom: 24,
+  },
+  passwordRequirements: {
+    marginTop: 8,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  requirementsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  requirementText: {
+    fontSize: 12,
+    marginLeft: 8,
+    flex: 1,
   },
 });
 

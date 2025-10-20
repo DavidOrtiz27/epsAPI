@@ -68,6 +68,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await apiService.register(userData);
+      
+      // If registration includes login (returns token), update auth state
+      if (response.token && response.user) {
+        setUser(response.user);
+        setToken(response.token);
+      }
+      
       return response;
     } catch (error) {
       throw error;

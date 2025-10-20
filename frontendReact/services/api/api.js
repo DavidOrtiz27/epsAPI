@@ -12,7 +12,8 @@ const API_CONFIG = {
   EMULATOR: 'http://10.0.2.2:8000/api',
   
   // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
-  PHYSICAL_DEVICE: 'http://10.2.235.205:8000/api',
+
+  PHYSICAL_DEVICE: 'http://192.168.1.8:8000/api',
   
   // 💻 Para DESARROLLO LOCAL (web/desktop)
   LOCAL: 'http://localhost:8000/api',
@@ -189,10 +190,18 @@ class ApiService {
   }
 
   async register(userData) {
-    return await this.request('/auth/register', {
+    const response = await this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
+
+    // If registration is successful and returns a token, save it
+    if (response.token) {
+      await this.setToken(response.token);
+      await AsyncStorage.setItem('user_data', JSON.stringify(response.user));
+    }
+
+    return response;
   }
 
   async logout() {
@@ -220,6 +229,20 @@ class ApiService {
     return await this.request('/auth/password', {
       method: 'PUT',
       body: JSON.stringify(passwordData),
+    });
+  }
+
+  async forgotPassword(email) {
+    return await this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(resetData) {
+    return await this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(resetData),
     });
   }
 
