@@ -12,7 +12,7 @@ class Notificacion extends Model
 
     protected $table = 'notificaciones';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'user_id',

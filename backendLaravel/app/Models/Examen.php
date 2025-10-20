@@ -16,6 +16,7 @@ class Examen extends Model
 
     protected $fillable = [
         'paciente_id',
+        'historial_id',
         'tipo',
         'resultado',
         'fecha',
@@ -34,5 +35,13 @@ class Examen extends Model
     public function paciente(): BelongsTo
     {
         return $this->belongsTo(Paciente::class);
+    }
+
+    /**
+     * Get the historial clinico associated with the examen.
+     */
+    public function historialClinico(): BelongsTo
+    {
+        return $this->belongsTo(HistorialClinico::class, 'historial_id');
     }
 }
