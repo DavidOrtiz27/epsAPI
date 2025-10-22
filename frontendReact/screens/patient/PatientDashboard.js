@@ -177,8 +177,11 @@ const PatientDashboard = () => {
     }
   };
 
+  // Validar que appointments sea un array antes de filtrar
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+
   {/*filter of next appointments*/}
-  const upcomingAppointments = appointments.filter(apt => {
+  const upcomingAppointments = safeAppointments.filter(apt => {
     const appointmentDate = formatAppointmentDateTime(apt.fecha);
     const now = new Date();
     const isFuture = appointmentDate >= now;
@@ -187,7 +190,7 @@ const PatientDashboard = () => {
   });
 
   // Recent appointments (past appointments)
-  const recentAppointments = appointments.filter(apt => {
+  const recentAppointments = safeAppointments.filter(apt => {
     const appointmentDate = formatAppointmentDateTime(apt.fecha);
     const now = new Date();
     return appointmentDate < now || apt.estado?.toLowerCase() === 'realizada';

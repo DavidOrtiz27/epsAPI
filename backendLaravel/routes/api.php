@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Patients can view their own appointments
         Route::get('/pacientes/citas', [CitaController::class, 'misCitas']);
+        Route::get('/pacientes/citas/health', [CitaController::class, 'healthCheck']);
         Route::post('/pacientes/citas', [CitaController::class, 'store']);
         Route::post('/pacientes/citas/{id}/cancelar', [CitaController::class, 'cancelarCita']);
 

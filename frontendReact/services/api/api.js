@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // =================================================================
-// 🚀 CONFIGURACIÓN AUTOMÁTICA DE API 
+// 🚀 CONFIGURACIÓN AUTOMÁTICA DE API |
 // Detecta automáticamente si estás en emulador o dispositivo físico
 // =================================================================
 
@@ -13,7 +13,7 @@ const API_CONFIG = {
   
   // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
 
-  PHYSICAL_DEVICE: 'http://192.168.1.8:8000/api',
+  PHYSICAL_DEVICE: 'http://192.168.7.132:8000/api',
   
   // 💻 Para DESARROLLO LOCAL (web/desktop)
   LOCAL: 'http://localhost:8000/api',
@@ -31,7 +31,7 @@ const detectEnvironment = () => {
   }
   
   if (Platform.OS === 'android') {
-    // Detectar si es emulador Android
+    // Detectar si es emulador Android2
     const isEmulator = Platform.constants?.Brand === 'google' && 
                       Platform.constants?.Model?.includes('sdk');
     
@@ -77,6 +77,7 @@ class ApiService {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      timeout: 10000, // 10 segundos timeout
       ...options,
     };
 
@@ -84,28 +85,52 @@ class ApiService {
     const token = await this.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Token exists, length:', token.length);
+      console.log('🔑 Token preview:', token.substring(0, 20) + '...');
+    } else {
+      console.log('❌ No token found in storage');
     }
 
     try {
       console.log('Request config:', config);
-      const response = await fetch(url, config);
+      
+      // Crear un timeout controller para manejar timeouts
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+      
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId); // Limpiar timeout si la respuesta llega a tiempo
       console.log('Response status:', response.status);
       
       let data;
+      const responseText = await response.text();
+      console.log('Raw response text length:', responseText.length);
+      console.log('Raw response preview:', responseText.substring(0, 200));
 
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
+        console.log('✅ Successfully parsed JSON response');
+        console.log('Response data type:', typeof data);
         console.log('Response data:', data);
       } catch (parseError) {
-        console.log('JSON parse error:', parseError);
+        console.error('❌ JSON parse error:', parseError);
+        console.error('❌ Failed to parse response:', responseText);
         // If response is not JSON, create a generic error
         data = { message: 'Error del servidor' };
       }
 
       if (!response.ok) {
+        console.log(`❌ HTTP Error ${response.status} for endpoint: ${endpoint}`);
+        console.log('❌ Response data:', data);
+        
         // Handle 401 errors by clearing token and throwing a specific error
         // But exclude login and register endpoints from session expiration logic
         if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
+          console.log('🔑 401 Unauthorized - Token expired or invalid, clearing token');
           await this.removeToken();
           const error = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
           error.status = response.status;
@@ -270,12 +295,72 @@ class ApiService {
   }
 
   async getPatientAppointments() {
-    const appointments = await this.request('/pacientes/citas');
-    console.log('Raw appointments received from backend:', appointments);
-    if (appointments && appointments.length > 0) {
-      console.log('First appointment date example:', appointments[0].fecha);
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 segundo
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`🔄 Attempting to fetch appointments (attempt ${attempt}/${MAX_RETRIES})`);
+        
+        const appointments = await this.request('/pacientes/citas');
+        console.log('Raw appointments received from backend:', appointments);
+        
+        // Verificar si es un error del servidor
+        if (appointments && appointments.message) {
+          console.error('❌ Backend error:', appointments.message);
+          if (attempt < MAX_RETRIES) {
+            console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            continue;
+          }
+          return []; // Retornar array vacío después de todos los reintentos
+        }
+        
+        // Verificar si es un array válido
+        if (!Array.isArray(appointments)) {
+          console.error('❌ Expected array but received:', typeof appointments, appointments);
+          if (attempt < MAX_RETRIES) {
+            console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            continue;
+          }
+          return []; // Retornar array vacío después de todos los reintentos
+        }
+        
+        if (appointments && appointments.length > 0) {
+          console.log('✅ First appointment date example:', appointments[0].fecha);
+        }
+        
+        console.log(`✅ Successfully fetched ${appointments.length} appointments on attempt ${attempt}`);
+        return appointments;
+        
+      } catch (error) {
+        console.error(`❌ Error fetching patient appointments (attempt ${attempt}):`, error);
+        
+        if (attempt < MAX_RETRIES) {
+          console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        } else {
+          console.error('❌ All retry attempts failed');
+          return []; // Retornar array vacío después de todos los reintentos
+        }
+      }
     }
-    return appointments;
+    
+    return []; // Fallback final
+  }
+  
+  // Health check para verificar el estado del backend
+  async checkAppointmentsHealth() {
+    try {
+      console.log('🩺 Checking appointments service health...');
+      const health = await this.request('/pacientes/citas/health');
+      console.log('🩺 Health check result:', health);
+      return health;
+    } catch (error) {
+      console.error('❌ Health check failed:', error);
+      return { status: 'unhealthy', error: error.message };
+    }
   }
 
   async createSampleMedicalHistory() {

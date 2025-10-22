@@ -204,7 +204,10 @@ const PatientAppointments = () => {
     }
   };
 
-  const upcomingAppointments = appointments.filter(
+  // Validar que appointments sea un array antes de filtrar
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+
+  const upcomingAppointments = safeAppointments.filter(
     (apt) => {
       const appointmentDate = formatAppointmentDateTime(apt.fecha);
       const now = new Date();
@@ -214,7 +217,7 @@ const PatientAppointments = () => {
     }
   );
 
-  const pastAppointments = appointments.filter(
+  const pastAppointments = safeAppointments.filter(
     (apt) => {
       const appointmentDate = formatAppointmentDateTime(apt.fecha);
       const now = new Date();

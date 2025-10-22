@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class CitaController extends Controller
 {
@@ -207,35 +208,77 @@ class CitaController extends Controller
      */
     public function misCitas(Request $request)
     {
-        $user = $request->user();
+        try {
+            \Log::info('=== misCitas method called ===');
+            $user = $request->user();
+            \Log::info("User ID: {$user->id}, Email: {$user->email}");
+            \Log::info("User roles: " . $user->roles->pluck('name')->implode(', '));
 
-        if ($user->hasRole('doctor')) {
-            $citas = Cita::where('medico_id', $user->medico->id)
-                        ->with(['paciente.user', 'medico.user'])
-                        ->orderBy('fecha', 'desc')
-                        ->get();
-        } elseif ($user->paciente) {
-            $citas = Cita::where('paciente_id', $user->paciente->id)
-                        ->with(['paciente.user', 'medico.user'])
-                        ->orderBy('fecha', 'desc')
-                        ->get();
-        } else {
-            $citas = collect();
-        }
-
-        // Debug logging for returned appointments
-        if ($citas->isNotEmpty()) {
-            \Log::info('Returning appointments to frontend:');
-            foreach ($citas->take(3) as $cita) {
-                \Log::info("Appointment ID {$cita->id}:");
-                \Log::info("  - Raw fecha from DB: {$cita->getRawOriginal('fecha')}");
-                \Log::info("  - Processed fecha: {$cita->fecha}");
-                \Log::info("  - ISO format: {$cita->fecha->toISOString()}");
-                \Log::info("  - JSON format: " . json_encode($cita->fecha));
+            if ($user->hasRole('doctor')) {
+                \Log::info('User is doctor');
+                if (!$user->medico) {
+                    \Log::error('Doctor user has no medico record!');
+                    return response()->json(['message' => 'Doctor record not found'], 404);
+                }
+                $citas = Cita::where('medico_id', $user->medico->id)
+                            ->with(['paciente.user', 'medico.user'])
+                            ->orderBy('fecha', 'desc')
+                            ->get();
+            } elseif ($user->paciente) {
+                \Log::info("User is patient, paciente ID: {$user->paciente->id}");
+                $citas = Cita::where('paciente_id', $user->paciente->id)
+                            ->with(['paciente.user', 'medico.user'])
+                            ->orderBy('fecha', 'desc')
+                            ->get();
+            } else {
+                \Log::warning('User has no paciente or medico record!');
+                $citas = collect();
             }
-        }
 
-        return response()->json($citas);
+            \Log::info("Found {$citas->count()} appointments");
+
+            // Debug logging for returned appointments
+            if ($citas->isNotEmpty()) {
+                \Log::info('Sample appointments:');
+                foreach ($citas->take(2) as $cita) {
+                    \Log::info("ID {$cita->id}: {$cita->fecha} - {$cita->estado}");
+                }
+            }
+
+            \Log::info('=== Returning JSON response ===');
+            
+            // Optimizar la respuesta para evitar JSON demasiado grande
+            $citasOptimizadas = $citas->map(function ($cita) {
+                return [
+                    'id' => $cita->id,
+                    'fecha' => $cita->fecha,
+                    'estado' => $cita->estado,
+                    'motivo' => $cita->motivo,
+                    'paciente' => [
+                        'id' => $cita->paciente->id,
+                        'nombre' => $cita->paciente->user->name,
+                        'documento' => $cita->paciente->documento,
+                        'telefono' => $cita->paciente->telefono,
+                    ],
+                    'medico' => [
+                        'id' => $cita->medico->id,
+                        'nombre' => $cita->medico->user->name,
+                        'especialidad' => $cita->medico->especialidad,
+                    ]
+                ];
+            });
+            
+            \Log::info("Sending optimized response with {$citasOptimizadas->count()} appointments");
+            return response()->json($citasOptimizadas);
+
+        } catch (\Exception $e) {
+            \Log::error('=== ERROR in misCitas ===');
+            \Log::error("Error message: " . $e->getMessage());
+            \Log::error("File: " . $e->getFile() . " Line: " . $e->getLine());
+            \Log::error("Stack trace: " . $e->getTraceAsString());
+            
+            return response()->json(['message' => 'Error del servidor'], 500);
+        }
     }
 
     /**
@@ -318,5 +361,42 @@ class CitaController extends Controller
         ];
 
         return response()->json($reportes);
+    }
+    
+    /**
+     * Endpoint de salud para verificar el estado del servicio de citas
+     */
+    public function healthCheck()
+    {
+        try {
+            Log::info('=== Health Check for Citas ===');
+            
+            // Verificar conexión a base de datos
+            $citasCount = Cita::count();
+            Log::info("Total citas in database: {$citasCount}");
+            
+            // Verificar usuario autenticado
+            $user = Auth::user();
+            Log::info("Current user ID: " . ($user ? $user->id : 'No user'));
+            
+            return response()->json([
+                'status' => 'healthy',
+                'service' => 'citas',
+                'timestamp' => now()->toISOString(),
+                'database_connection' => 'ok',
+                'total_citas' => $citasCount,
+                'authenticated_user' => $user ? $user->id : null
+            ], 200);
+            
+        } catch (\Exception $e) {
+            Log::error('Health check failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'unhealthy',
+                'service' => 'citas',
+                'timestamp' => now()->toISOString(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

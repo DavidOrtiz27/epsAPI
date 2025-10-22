@@ -167,15 +167,18 @@ const DoctorAppointments = () => {
     }
   };
 
-  const pendingAppointments = appointments.filter(apt =>
+  // Validar que appointments sea un array antes de filtrar
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+
+  const pendingAppointments = safeAppointments.filter(apt =>
     apt.estado?.toLowerCase() === 'pendiente'
   );
 
-  const confirmedAppointments = appointments.filter(apt =>
+  const confirmedAppointments = safeAppointments.filter(apt =>
     apt.estado?.toLowerCase() === 'confirmada'
   );
 
-  const completedAppointments = appointments.filter(apt =>
+  const completedAppointments = safeAppointments.filter(apt =>
     apt.estado?.toLowerCase() === 'realizada'
   );
 

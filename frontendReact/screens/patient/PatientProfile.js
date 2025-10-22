@@ -339,26 +339,6 @@ const PatientProfile = () => {
           </View>
         </View>
 
-        {/* Medical Services */}
-        <View style={styles.medicalSection}>
-          <Text style={styles.sectionTitle}>Servicios Médicos</Text>
-
-          <View style={styles.medicalCard}>
-            <TouchableOpacity
-              style={styles.medicalAction}
-              onPress={() => navigation.navigate('PatientHistory')}
-            >
-              <View style={styles.medicalActionLeft}>
-                <Ionicons name="document-text-outline" size={24} color="#007AFF" />
-                <View style={styles.medicalActionInfo}>
-                  <Text style={styles.medicalActionTitle}>Historial Médico</Text>
-                  <Text style={styles.medicalActionSubtitle}>Ver registros médicos y tratamientos</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
      {/* Edit Profile Modal */}
