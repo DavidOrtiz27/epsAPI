@@ -17,7 +17,6 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
-import { CommonActions } from '@react-navigation/native';
 import CustomButton from '../../components/ui/CustomButton';
 import { notificationService } from '../../services';
 
@@ -38,7 +37,6 @@ const DoctorAppointmentDetail = () => {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showTreatmentPrescriptionModal, setShowTreatmentPrescriptionModal] = useState(false);
   const [showExamModal, setShowExamModal] = useState(false);
-  const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false);
 
   // Form states
   const [medicalRecordForm, setMedicalRecordForm] = useState({
@@ -72,11 +70,6 @@ const DoctorAppointmentDetail = () => {
     duracion_dias: '', // Combined duration for both treatment and prescription
     instrucciones: '',
   });
-  const [editAppointmentForm, setEditAppointmentForm] = useState({
-    fecha: new Date(),
-    hora: new Date(),
-    motivo: '',
-  });
 
   // Data states
   const [medicamentos, setMedicamentos] = useState([]);
@@ -97,8 +90,6 @@ const DoctorAppointmentDetail = () => {
   ];
 
   // Date/Time picker states
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [showTreatmentDatePicker, setShowTreatmentDatePicker] = useState(false);
   const [showTreatmentPrescriptionDatePicker, setShowTreatmentPrescriptionDatePicker] = useState(false);
   const [showMedicamentoDropdown, setShowMedicamentoDropdown] = useState(false);
@@ -143,16 +134,6 @@ const DoctorAppointmentDetail = () => {
         } catch (error) {
           console.error('Error loading medical records:', error);
         }
-      }
-
-      // Initialize edit form with current data
-      if (appointmentData.fecha) {
-        const fecha = new Date(appointmentData.fecha);
-        setEditAppointmentForm({
-          fecha: fecha,
-          hora: fecha,
-          motivo: appointmentData.motivo || '',
-        });
       }
     } catch (error) {
       console.error('Error loading appointment:', error);
@@ -556,32 +537,6 @@ const DoctorAppointmentDetail = () => {
     }
   };
 
-  const handleUpdateAppointment = async () => {
-    try {
-      const combinedDateTime = new Date(
-        editAppointmentForm.fecha.getFullYear(),
-        editAppointmentForm.fecha.getMonth(),
-        editAppointmentForm.fecha.getDate(),
-        editAppointmentForm.hora.getHours(),
-        editAppointmentForm.hora.getMinutes(),
-        0
-      );
-
-      const updateData = {
-        fecha: combinedDateTime.toISOString(),
-        motivo: editAppointmentForm.motivo,
-      };
-
-      await apiService.updateAppointment(appointmentId, updateData);
-      Alert.alert('Éxito', 'Cita actualizada correctamente');
-      setShowEditAppointmentModal(false);
-      loadAppointmentData(); // Refresh data
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-      Alert.alert('Error', 'No se pudo actualizar la cita');
-    }
-  };
-
   const handleCancelAppointment = async () => {
     Alert.alert(
       'Cancelar Cita',
@@ -737,9 +692,6 @@ const DoctorAppointmentDetail = () => {
               {appointment?.fecha ? new Date(appointment.fecha).toLocaleDateString('es-ES') : ''}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowEditAppointmentModal(true)} style={styles.editButton}>
-            <Ionicons name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
         </View>
 
         {/* Appointment Status */}
@@ -818,7 +770,6 @@ const DoctorAppointmentDetail = () => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Historial Médico</Text>
             <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>Ver todo</Text>
               <Ionicons name="chevron-forward" size={16} color="#007AFF" />
             </TouchableOpacity>
           </View>
@@ -996,23 +947,7 @@ const DoctorAppointmentDetail = () => {
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
 
-            {/* Acciones rápidas adicionales */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Ionicons name="call" size={20} color="#34C759" />
-                <Text style={styles.quickActionText}>Llamar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Ionicons name="mail" size={20} color="#007AFF" />
-                <Text style={styles.quickActionText}>Email</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Ionicons name="share" size={20} color="#5856D6" />
-                <Text style={styles.quickActionText}>Compartir</Text>
-              </TouchableOpacity>
-            </View>
+
           </View>
         </View>
       </ScrollView>
@@ -1445,97 +1380,7 @@ const DoctorAppointmentDetail = () => {
         </View>
       </Modal>
 
-      {/* Edit Appointment Modal */}
-      <Modal
-        visible={showEditAppointmentModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowEditAppointmentModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Editar Cita</Text>
-            <ScrollView style={styles.formContainer}>
-              <Text style={styles.label}>Fecha</Text>
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.inputText}>
-                  {editAppointmentForm.fecha.toLocaleDateString('es-ES')}
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.label}>Hora</Text>
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Text style={styles.inputText}>
-                  {editAppointmentForm.hora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.label}>Motivo</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={editAppointmentForm.motivo}
-                onChangeText={(text) => setEditAppointmentForm(prev => ({ ...prev, motivo: text }))}
-                placeholder="Motivo de la consulta"
-                multiline
-                numberOfLines={2}
-              />
-            </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <CustomButton
-                title="Cancelar"
-                onPress={() => setShowEditAppointmentModal(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-              <CustomButton
-                title="Guardar"
-                onPress={handleUpdateAppointment}
-                backgroundColor="#007AFF"
-                textColor="#fff"
-                style={styles.modalButton}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Date/Time Pickers */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={editAppointmentForm.fecha}
-          mode="date"
-          display="default"
-          onChange={(_, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) {
-              setEditAppointmentForm(prev => ({ ...prev, fecha: selectedDate }));
-            }
-          }}
-          minimumDate={new Date()}
-        />
-      )}
-
-      {showTimePicker && (
-        <DateTimePicker
-          value={editAppointmentForm.hora}
-          mode="time"
-          display="default"
-          onChange={(_, selectedTime) => {
-            setShowTimePicker(false);
-            if (selectedTime) {
-              setEditAppointmentForm(prev => ({ ...prev, hora: selectedTime }));
-            }
-          }}
-        />
-      )}
-
       {showTreatmentDatePicker && (
         <DateTimePicker
           value={treatmentForm.fecha_inicio}
@@ -2125,24 +1970,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 18,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  quickActionButton: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  quickActionText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontWeight: '500',
   },
 });
 
