@@ -36,7 +36,53 @@ class CitaController extends Controller
             }
         }
 
-        return response()->json($citas);
+                    // Optimizar la respuesta para evitar JSON demasiado grande
+            $citasOptimizadas = $citas->map(function ($cita) {
+                // Debug logging para ver qué datos tenemos
+                \Log::info("Processing cita ID: {$cita->id}");
+                \Log::info("  - Fecha: {$cita->fecha}");
+                \Log::info("  - Estado: {$cita->estado}");
+                \Log::info("  - Motivo: {$cita->motivo}");
+                
+                if ($cita->paciente) {
+                    \Log::info("  - Paciente ID: {$cita->paciente->id}");
+                    \Log::info("  - Paciente user: " . ($cita->paciente->user ? $cita->paciente->user->name : 'NULL'));
+                } else {
+                    \Log::warning("  - NO PACIENTE DATA!");
+                }
+                
+                if ($cita->medico) {
+                    \Log::info("  - Medico ID: {$cita->medico->id}");
+                    \Log::info("  - Medico user: " . ($cita->medico->user ? $cita->medico->user->name : 'NULL'));
+                } else {
+                    \Log::warning("  - NO MEDICO DATA!");
+                }
+                
+                return [
+                    'id' => $cita->id,
+                    'fecha' => $cita->fecha,
+                    'estado' => $cita->estado,
+                    'motivo' => $cita->motivo,
+                    'paciente' => [
+                        'id' => $cita->paciente ? $cita->paciente->id : null,
+                        'nombre' => ($cita->paciente && $cita->paciente->user) ? $cita->paciente->user->name : 'Desconocido',
+                        'documento' => $cita->paciente ? $cita->paciente->documento : 'N/A',
+                        'telefono' => $cita->paciente ? $cita->paciente->telefono : 'N/A',
+                    ],
+                    'medico' => [
+                        'id' => $cita->medico ? $cita->medico->id : null,
+                        'nombre' => ($cita->medico && $cita->medico->user) ? $cita->medico->user->name : 'Desconocido',
+                        'especialidad' => $cita->medico ? $cita->medico->especialidad : 'N/A',
+                    ]
+                ];
+            })->filter(function($cita) {
+                // Filtrar citas con datos válidos
+                return isset($cita['fecha']) && $cita['fecha'] && 
+                       isset($cita['paciente']['nombre']) && 
+                       isset($cita['medico']['nombre']);
+            });
+
+        return response()->json($citasOptimizadas);
     }
 
     /**
@@ -255,15 +301,15 @@ class CitaController extends Controller
                     'estado' => $cita->estado,
                     'motivo' => $cita->motivo,
                     'paciente' => [
-                        'id' => $cita->paciente->id,
-                        'nombre' => $cita->paciente->user->name,
-                        'documento' => $cita->paciente->documento,
-                        'telefono' => $cita->paciente->telefono,
+                        'id' => $cita->paciente ? $cita->paciente->id : null,
+                        'nombre' => ($cita->paciente && $cita->paciente->user) ? $cita->paciente->user->name : 'Desconocido',
+                        'documento' => $cita->paciente ? $cita->paciente->documento : 'N/A',
+                        'telefono' => $cita->paciente ? $cita->paciente->telefono : 'N/A',
                     ],
                     'medico' => [
-                        'id' => $cita->medico->id,
-                        'nombre' => $cita->medico->user->name,
-                        'especialidad' => $cita->medico->especialidad,
+                        'id' => $cita->medico ? $cita->medico->id : null,
+                        'nombre' => ($cita->medico && $cita->medico->user) ? $cita->medico->user->name : 'Desconocido',
+                        'especialidad' => $cita->medico ? $cita->medico->especialidad : 'N/A',
                     ]
                 ];
             });

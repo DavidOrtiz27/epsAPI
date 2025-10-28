@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -144,7 +144,8 @@ const PatientDashboard = () => {
         <Text style={styles.appointmentMotivo}>{appointment.motivo || 'Consulta general'}</Text>
         {appointment.medico && (
           <Text style={styles.appointmentDoctor}>
-            Dr. {appointment.medico.user?.name || 'Médico asignado'}
+            {/* Adaptado para la nueva estructura optimizada del backend */}
+            Dr. {appointment.medico?.nombre || appointment.medico?.user?.name || 'Médico asignado'}
           </Text>
         )}
       </View>

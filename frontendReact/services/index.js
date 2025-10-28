@@ -1,3 +1,5 @@
 // Services index - organized by type
 export * from './api';
-export * from './auth';
+
+// Notification service
+export { default as notificationService } from './NotificationService';

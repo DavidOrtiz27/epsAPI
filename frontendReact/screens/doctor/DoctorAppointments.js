@@ -14,6 +14,7 @@ import { useAuth } from '../../utils/context/AuthContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiService from '../../services/api/api';
 import CustomButton from '../../components/ui/CustomButton';
+import { notificationService } from '../../services';
 
 const DoctorAppointments = () => {
   const { user, logout } = useAuth();
@@ -45,19 +46,33 @@ const DoctorAppointments = () => {
     }
   };
 
-  const handleStatusChange = async (appointmentId, newStatus) => {
+  const handleStatusChange = async (appointmentId, newStatus, appointmentData = null) => {
     try {
       await apiService.updateAppointmentStatus(appointmentId, newStatus);
       // Reload appointments to reflect changes
       await loadAppointments();
       Alert.alert('Éxito', 'Estado de la cita actualizado correctamente');
+
+      // Enviar notificación al paciente sobre el cambio de estado
+      try {
+        const doctorName = user?.medico?.nombre || user?.name || 'su médico';
+        if (appointmentData) {
+          await notificationService.showAppointmentStatusUpdate(
+            appointmentData, 
+            newStatus, 
+            doctorName
+          );
+        }
+      } catch (notificationError) {
+        console.log('⚠️ Could not send status update notification:', notificationError);
+      }
     } catch (error) {
       console.error('Error updating appointment status:', error);
       Alert.alert('Error', 'No se pudo actualizar el estado de la cita');
     }
   };
 
-  const confirmStatusChange = (appointmentId, newStatus, statusText) => {
+  const confirmStatusChange = (appointmentId, newStatus, statusText, appointmentData = null) => {
     Alert.alert(
       'Confirmar cambio',
       `¿Estás seguro de cambiar el estado de esta cita a "${statusText}"?`,
@@ -68,7 +83,7 @@ const DoctorAppointments = () => {
         },
         {
           text: 'Confirmar',
-          onPress: () => handleStatusChange(appointmentId, newStatus),
+          onPress: () => handleStatusChange(appointmentId, newStatus, appointmentData),
         },
       ]
     );
@@ -109,7 +124,8 @@ const DoctorAppointments = () => {
         <View style={styles.patientInfo}>
           <Ionicons name="person-outline" size={16} color="#666" />
           <Text style={styles.patientName}>
-            {appointment.paciente?.user?.name || 'Paciente'}
+            {/* Adaptado para la nueva estructura optimizada del backend */}
+            {appointment.paciente?.nombre || appointment.paciente?.user?.name || 'Paciente'}
           </Text>
         </View>
 
@@ -123,14 +139,14 @@ const DoctorAppointments = () => {
           <View style={styles.actionButtons}>
             <CustomButton
               title="Confirmar"
-              onPress={() => confirmStatusChange(appointment.id, 'confirmada', 'Confirmada')}
+              onPress={() => confirmStatusChange(appointment.id, 'confirmada', 'Confirmada', appointment)}
               variant="secondary"
               size="small"
               style={styles.actionButton}
             />
             <CustomButton
               title="Cancelar"
-              onPress={() => confirmStatusChange(appointment.id, 'cancelada', 'Cancelada')}
+              onPress={() => confirmStatusChange(appointment.id, 'cancelada', 'Cancelada', appointment)}
               variant="danger"
               size="small"
               style={styles.actionButton}

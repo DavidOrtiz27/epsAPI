@@ -41,8 +41,9 @@ const AdminAudits = ({ navigation }) => {
   const loadAudits = async () => {
     try {
       const auditsData = await apiService.getAudits();
-      // Sort by date descending (most recent first)
-      const sortedAudits = auditsData.sort((a, b) => new Date(b.fecha || b.created_at) - new Date(a.fecha || a.created_at));
+      // Sort by date descending (most recent first) - ensure auditsData is an array
+      const safeAuditsData = Array.isArray(auditsData) ? auditsData : [];
+      const sortedAudits = safeAuditsData.sort((a, b) => new Date(b.fecha || b.created_at) - new Date(a.fecha || a.created_at));
       setAudits(sortedAudits);
     } catch (error) {
       console.error('Error loading audits:', error);

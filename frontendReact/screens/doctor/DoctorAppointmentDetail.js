@@ -19,6 +19,7 @@ import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 import { CommonActions } from '@react-navigation/native';
 import CustomButton from '../../components/ui/CustomButton';
+import { notificationService } from '../../services';
 
 const DoctorAppointmentDetail = () => {
   const route = useRoute();
@@ -166,6 +167,18 @@ const DoctorAppointmentDetail = () => {
       await apiService.updateAppointmentStatus(appointmentId, newStatus);
       Alert.alert('Éxito', 'Estado de la cita actualizado correctamente');
 
+      // Enviar notificación al paciente sobre el cambio de estado
+      try {
+        const doctorName = user?.medico?.nombre || user?.name || 'su médico';
+        await notificationService.showAppointmentStatusUpdate(
+          appointment, 
+          newStatus, 
+          doctorName
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send status update notification:', notificationError);
+      }
+
       // If marking as completed, navigate back to appointments list
       if (newStatus === 'realizada') {
         navigation.goBack();
@@ -312,7 +325,7 @@ const DoctorAppointmentDetail = () => {
         }
 
         const treatmentsResponse = await apiService.getTreatments();
-        const patientTreatments = treatmentsResponse.filter(t =>
+        const patientTreatments = (Array.isArray(treatmentsResponse) ? treatmentsResponse : []).filter(t =>
           t.historialClinico && t.historialClinico.paciente_id == patient.id
         );
 
@@ -582,6 +595,19 @@ const DoctorAppointmentDetail = () => {
             try {
               await apiService.updateAppointmentStatus(appointmentId, 'cancelada');
               Alert.alert('Éxito', 'Cita cancelada correctamente');
+
+              // Enviar notificación al paciente sobre la cancelación
+              try {
+                const doctorName = user?.medico?.nombre || user?.name || 'su médico';
+                await notificationService.showAppointmentStatusUpdate(
+                  appointment, 
+                  'cancelada', 
+                  doctorName
+                );
+              } catch (notificationError) {
+                console.log('⚠️ Could not send cancellation notification:', notificationError);
+              }
+
               loadAppointmentData(); // Refresh data to show updated status
             } catch (error) {
               console.error('Error canceling appointment:', error);

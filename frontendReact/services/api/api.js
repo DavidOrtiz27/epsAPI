@@ -12,8 +12,7 @@ const API_CONFIG = {
   EMULATOR: 'http://10.0.2.2:8000/api',
   
   // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
-
-  PHYSICAL_DEVICE: 'http://192.168.7.132:8000/api',
+  PHYSICAL_DEVICE: 'http://192.168.1.23:8000/api',
   
   // 💻 Para DESARROLLO LOCAL (web/desktop)
   LOCAL: 'http://localhost:8000/api',
@@ -53,10 +52,6 @@ const getApiBaseUrl = () => {
   const environment = detectEnvironment();
   const url = API_CONFIG[environment];
   
-  // Log para debugging - puedes comentar estas líneas en producción
-  console.log('🌐 API Environment:', environment);
-  console.log('🔗 API URL:', url);
-  
   return url;
 };
 
@@ -69,15 +64,12 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    console.log('🌐 Making API request to:', url);
-    console.log('📱 Device type detected:', detectEnvironment());
     
     const config = {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      timeout: 10000, // 10 segundos timeout
       ...options,
     };
 
@@ -85,37 +77,34 @@ class ApiService {
     const token = await this.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Token exists, length:', token.length);
-      console.log('🔑 Token preview:', token.substring(0, 20) + '...');
-    } else {
-      console.log('❌ No token found in storage');
     }
 
+    let timeoutId = null; // Declarar fuera del try
+
     try {
-      console.log('Request config:', config);
       
-      // Crear un timeout controller para manejar timeouts
+      // Crear un timeout controller con timeout más generoso para emulador
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+      const timeoutDuration = 30000; // 30 segundos para emulador
+      timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeoutDuration);
       
       const response = await fetch(url, {
         ...config,
         signal: controller.signal
       });
       
-      clearTimeout(timeoutId); // Limpiar timeout si la respuesta llega a tiempo
-      console.log('Response status:', response.status);
+      if (timeoutId) {
+        clearTimeout(timeoutId); // Limpiar timeout si la respuesta llega a tiempo
+        timeoutId = null;
+      }
       
       let data;
       const responseText = await response.text();
-      console.log('Raw response text length:', responseText.length);
-      console.log('Raw response preview:', responseText.substring(0, 200));
 
       try {
         data = JSON.parse(responseText);
-        console.log('✅ Successfully parsed JSON response');
-        console.log('Response data type:', typeof data);
-        console.log('Response data:', data);
       } catch (parseError) {
         console.error('❌ JSON parse error:', parseError);
         console.error('❌ Failed to parse response:', responseText);
@@ -124,8 +113,6 @@ class ApiService {
       }
 
       if (!response.ok) {
-        console.log(`❌ HTTP Error ${response.status} for endpoint: ${endpoint}`);
-        console.log('❌ Response data:', data);
         
         // Handle 401 errors by clearing token and throwing a specific error
         // But exclude login and register endpoints from session expiration logic
@@ -164,8 +151,22 @@ class ApiService {
 
       return data;
     } catch (error) {
-      // If it's a network error or other fetch error
-      if (!error.status) {
+      // Clear timeout if it exists
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Handle AbortError specifically
+      if (error.name === 'AbortError') {
+        const timeoutError = new Error('La solicitud tardó demasiado tiempo. Verifica tu conexión.');
+        timeoutError.isTimeout = true;
+        throw timeoutError;
+      }
+      
+      // Handle network errors
+      if (error.message.includes('fetch') || error.message.includes('Network')) {
+        error.message = 'Error de conexión. Verifica que el servidor esté funcionando.';
+      } else if (!error.status) {
         error.message = 'Error de conexión. Verifica tu conexión a internet.';
       }
 
@@ -300,16 +301,11 @@ class ApiService {
     
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        console.log(`🔄 Attempting to fetch appointments (attempt ${attempt}/${MAX_RETRIES})`);
-        
         const appointments = await this.request('/pacientes/citas');
-        console.log('Raw appointments received from backend:', appointments);
         
         // Verificar si es un error del servidor
         if (appointments && appointments.message) {
-          console.error('❌ Backend error:', appointments.message);
           if (attempt < MAX_RETRIES) {
-            console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             continue;
           }
@@ -318,30 +314,19 @@ class ApiService {
         
         // Verificar si es un array válido
         if (!Array.isArray(appointments)) {
-          console.error('❌ Expected array but received:', typeof appointments, appointments);
           if (attempt < MAX_RETRIES) {
-            console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             continue;
           }
           return []; // Retornar array vacío después de todos los reintentos
         }
         
-        if (appointments && appointments.length > 0) {
-          console.log('✅ First appointment date example:', appointments[0].fecha);
-        }
-        
-        console.log(`✅ Successfully fetched ${appointments.length} appointments on attempt ${attempt}`);
         return appointments;
         
       } catch (error) {
-        console.error(`❌ Error fetching patient appointments (attempt ${attempt}):`, error);
-        
         if (attempt < MAX_RETRIES) {
-          console.log(`⏳ Retrying in ${RETRY_DELAY}ms...`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         } else {
-          console.error('❌ All retry attempts failed');
           return []; // Retornar array vacío después de todos los reintentos
         }
       }
@@ -351,14 +336,38 @@ class ApiService {
   }
   
   // Health check para verificar el estado del backend
+  async checkBackendHealth() {
+    try {
+      const startTime = Date.now();
+      
+      // Simple ping to backend - simplified approach
+      const response = await fetch(`${this.baseURL}/medicos`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await this.getToken()}`
+        }
+        // Remove AbortSignal.timeout as it might not be supported in all environments
+      });
+      
+      const duration = Date.now() - startTime;
+      
+      if (response.ok) {
+        return { status: 'healthy', latency: duration };
+      } else {
+        return { status: 'error', statusCode: response.status };
+      }
+    } catch (error) {
+      return { status: 'unhealthy', error: error.message };
+    }
+  }
+  
+  // Health check para verificar el estado del backend
   async checkAppointmentsHealth() {
     try {
-      console.log('🩺 Checking appointments service health...');
       const health = await this.request('/pacientes/citas/health');
-      console.log('🩺 Health check result:', health);
       return health;
     } catch (error) {
-      console.error('❌ Health check failed:', error);
       return { status: 'unhealthy', error: error.message };
     }
   }
@@ -404,18 +413,6 @@ class ApiService {
           diagnostico: null,
           tratamientos: []
         }));
-      }
-
-      // Debug: mostrar qué tratamientos se están cargando
-      if (__DEV__) {
-        console.log('Clinical History from backend:', clinicalHistory);
-        clinicalHistory.forEach((record, index) => {
-          console.log(`Record ${index}: ID=${record.id}, Cita=${record.cita?.id || 'null'}, Tratamientos=${record.tratamientos?.length || 0}`, {
-            diagnostico: record.diagnostico,
-            tratamientos: record.tratamientos,
-            medicamentos: record.tratamientos?.map(t => t.medicamentos?.length || 0)
-          });
-        });
       }
 
       // Obtener todas las citas para incluir las que no tienen historial clínico
@@ -500,8 +497,9 @@ class ApiService {
         }
       });
 
-      // Ordenar por fecha (más reciente primero)
-      return combinedHistory
+      // Ordenar por fecha (más reciente primero) - ensure combinedHistory is an array
+      const safeCombinedHistory = Array.isArray(combinedHistory) ? combinedHistory : [];
+      return safeCombinedHistory
         .filter(item => item && item.fecha) // Filtrar items válidos con fecha
         .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
@@ -576,7 +574,30 @@ class ApiService {
   }
 
   async getDoctors() {
-    return await this.request('/medicos');
+    try {
+      
+      // First, do a health check
+      const healthStatus = await this.checkBackendHealth();
+      
+      if (healthStatus.status !== 'healthy') {
+        throw new Error(`Backend no disponible: ${healthStatus.error || 'Estado: ' + healthStatus.status}`);
+      }
+      
+      const doctors = await this.request('/medicos');
+      return doctors;
+      
+    } catch (error) {
+      console.error('❌ Error fetching doctors:', error);
+      
+      // Provide more specific error messages
+      if (error.name === 'AbortError' || error.isTimeout) {
+        throw new Error('La solicitud tardó demasiado. Verifica tu conexión de red.');
+      } else if (error.message.includes('fetch')) {
+        throw new Error('No se puede conectar al servidor. Verifica que Laravel esté ejecutándose.');
+      } else {
+        throw error;
+      }
+    }
   }
 
   async createAppointment(appointmentData) {

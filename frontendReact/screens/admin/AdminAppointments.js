@@ -53,7 +53,9 @@ const AdminAppointments = ({ navigation }) => {
   };
 
   const filterAppointments = () => {
-    let filtered = appointments;
+    // Ensure appointments is an array before filtering
+    const safeAppointments = Array.isArray(appointments) ? appointments : [];
+    let filtered = safeAppointments;
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -64,8 +66,9 @@ const AdminAppointments = ({ navigation }) => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(appointment => {
-        const patientName = `${appointment.paciente?.user?.name || ''}`.toLowerCase();
-        const doctorName = `${appointment.medico?.user?.name || ''}`.toLowerCase();
+        // Adaptado para la nueva estructura optimizada del backend
+        const patientName = `${appointment.paciente?.nombre || appointment.paciente?.user?.name || ''}`.toLowerCase();
+        const doctorName = `${appointment.medico?.nombre || appointment.medico?.user?.name || ''}`.toLowerCase();
         const motivo = `${appointment.motivo || ''}`.toLowerCase();
 
         return patientName.includes(query) ||
@@ -74,8 +77,10 @@ const AdminAppointments = ({ navigation }) => {
       });
     }
 
-    // Sort by date (most recent first)
-    filtered.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    // Sort by date (most recent first) - ensure filtered is an array
+    if (Array.isArray(filtered)) {
+      filtered.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
 
     setFilteredAppointments(filtered);
   };
@@ -119,9 +124,12 @@ const AdminAppointments = ({ navigation }) => {
   };
 
   const handleDeleteAppointment = (appointment) => {
+    // Adaptado para la nueva estructura optimizada del backend
+    const patientName = appointment.paciente?.nombre || appointment.paciente?.user?.name || 'Paciente desconocido';
+    
     Alert.alert(
       'Eliminar Cita',
-      `¿Estás seguro de que quieres eliminar la cita de ${appointment.paciente?.user?.name}?`,
+      `¿Estás seguro de que quieres eliminar la cita de ${patientName}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -168,8 +176,13 @@ const AdminAppointments = ({ navigation }) => {
     <View style={styles.appointmentCard}>
       <View style={styles.appointmentHeader}>
         <View style={styles.patientInfo}>
-          <Text style={styles.patientName}>{item.paciente?.user?.name || 'Paciente desconocido'}</Text>
-          <Text style={styles.doctorName}>Dr. {item.medico?.user?.name || 'Médico desconocido'}</Text>
+          {/* Adaptado para la nueva estructura optimizada del backend */}
+          <Text style={styles.patientName}>
+            {item.paciente?.nombre || item.paciente?.user?.name || 'Paciente desconocido'}
+          </Text>
+          <Text style={styles.doctorName}>
+            Dr. {item.medico?.nombre || item.medico?.user?.name || 'Médico desconocido'}
+          </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.estado) }]}>
           <Text style={styles.statusText}>{getStatusLabel(item.estado)}</Text>

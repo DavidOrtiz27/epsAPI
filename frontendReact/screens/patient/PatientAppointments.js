@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -26,7 +26,6 @@ const PatientAppointments = () => {
   const formatAppointmentDateTime = (fechaString) => {
     // Since Laravel is now configured to use America/Bogota timezone,
     // dates should come in the correct local timezone
-    console.log('Formatting date string from backend:', fechaString);
     
     let date;
     
@@ -40,9 +39,6 @@ const PatientAppointments = () => {
       // Format like "2024-01-15 14:30:00" - assume it's in local timezone (Colombia)
       date = new Date(fechaString.replace(' ', 'T'));
     }
-    
-    console.log('Parsed date object:', date);
-    console.log('Local time string:', date.toLocaleString());
     
     return date;
   };
@@ -109,13 +105,6 @@ const PatientAppointments = () => {
     const appointmentDate = formatAppointmentDateTime(appointment.fecha);
     const now = new Date();
     
-    // Debug logging for timezone issues
-    console.log('Original fecha from backend:', appointment.fecha);
-    console.log('Parsed appointmentDate:', appointmentDate);
-    console.log('appointmentDate UTC string:', appointmentDate.toISOString());
-    console.log('appointmentDate local string:', appointmentDate.toLocaleString());
-    console.log('Formatted time 12h:', formatTime12Hour(appointment.fecha));
-    
     const isUpcoming = appointmentDate >= now;
     const isCancellable = appointment.estado?.toLowerCase() !== 'cancelada' &&
                          appointment.estado?.toLowerCase() !== 'realizada';
@@ -151,7 +140,11 @@ const PatientAppointments = () => {
         <View style={styles.doctorInfo}>
           <Ionicons name="medical" size={16} color="#666" />
           <Text style={styles.doctorName}>
-            {appointment.medico?.user?.name ? `Dr. ${appointment.medico.user.name}` : 'Médico asignado'}
+            {/* Adaptado para la nueva estructura optimizada del backend */}
+            {appointment.medico?.nombre || appointment.medico?.user?.name ? 
+              `Dr. ${appointment.medico?.nombre || appointment.medico?.user?.name}` : 
+              'Médico asignado'
+            }
           </Text>
         </View>
 

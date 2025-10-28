@@ -219,7 +219,7 @@ const AdminPatientDetail = ({ navigation, route }) => {
         {/* Recent Activity */}
         {patient.citas && patient.citas.length > 0 && (
           renderInfoSection('Citas Recientes', 'calendar-outline', (
-            patient.citas
+            (Array.isArray(patient.citas) ? patient.citas : [])
               .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
               .slice(0, 5)
               .map((cita) => (

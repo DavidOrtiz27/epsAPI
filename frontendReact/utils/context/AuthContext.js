@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../../services/api/api';
+import { notificationService } from '../../services';
 
 const AuthContext = createContext();
 
@@ -59,6 +60,15 @@ export const AuthProvider = ({ children }) => {
       const response = await apiService.login({ email, password });
       setUser(response.user);
       setToken(response.token);
+
+      // Enviar notificación de login exitoso
+      try {
+        const userName = response.user?.name || response.user?.nombre || 'Usuario';
+        await notificationService.showLoginSuccess(userName);
+      } catch (notificationError) {
+        console.log('⚠️ Could not send login notification:', notificationError);
+      }
+
       return response;
     } catch (error) {
       throw error;

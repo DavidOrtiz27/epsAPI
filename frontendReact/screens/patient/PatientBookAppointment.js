@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import { notificationService } from '../../services';
 
 const PatientBookAppointment = ({ navigation }) => {
   const { user } = useAuth();
@@ -74,17 +75,11 @@ const PatientBookAppointment = ({ navigation }) => {
 
     const loadAvailableSlots = async (doctorId, date) => {
     try {
-      console.log('Loading available slots for doctor:', doctorId, 'on date:', date);
       const response = await apiService.getAvailableSlots(doctorId, date);
       
       // Remove duplicates
       const uniqueSlots = [...new Set(response.available_slots)];
       setAvailableSlots(uniqueSlots);
-      console.log('Available slots from backend (24h format):', uniqueSlots);
-      console.log('Example slot conversions:');
-      uniqueSlots.slice(0, 3).forEach(slot => {
-        console.log(`${slot} (24h) → ${formatTo12Hour(slot)} (12h)`);
-      });
     } catch (error) {
       console.error('Error loading available slots:', error);
       setAvailableSlots([]);
@@ -111,8 +106,6 @@ const PatientBookAppointment = ({ navigation }) => {
   };
 
     const handleDateSelect = (date) => {
-    console.log('Selected date (formatted):', date);
-    console.log('Original date object:', new Date(date + ' 00:00:00'));
     setSelectedDate(date);
     setSelectedSlot(null);
     setAvailableSlots([]);
@@ -135,13 +128,21 @@ const PatientBookAppointment = ({ navigation }) => {
         motivo: motivo.trim(),
       };
       
-      console.log('Booking appointment with data:', appointmentData);
-      console.log('Selected date string being sent:', selectedDate);
-      console.log('Selected slot (24h format):', selectedSlot);
-      console.log('Selected slot (12h format):', formatTo12Hour(selectedSlot));
-      console.log('Final fecha being sent:', appointmentData.fecha);
-      
-      await apiService.createAppointment(appointmentData);
+      const response = await apiService.createAppointment(appointmentData);
+
+      // Enviar notificación de cita creada
+      try {
+        const appointmentNotificationData = {
+          id: response?.id || 'new',
+          fecha: appointmentData.fecha,
+          medico: {
+            nombre: selectedDoctor.nombre || selectedDoctor.name || 'Doctor'
+          }
+        };
+        await notificationService.showAppointmentCreated(appointmentNotificationData);
+      } catch (notificationError) {
+        console.log('⚠️ Could not send appointment notification:', notificationError);
+      }
 
       // Clear all form state
       setSelectedSpecialty(null);
@@ -184,17 +185,11 @@ const PatientBookAppointment = ({ navigation }) => {
   const generateNextDates = () => {
     const dates = [];
     const today = new Date();
-    console.log('Today (original):', today);
-    console.log('Today timezone offset:', today.getTimezoneOffset());
     
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);
-      
-      if (i < 3) { // Log first 3 dates for debugging
-        console.log(`Date ${i}:`, date, 'formatted:', formatDate(date));
-      }
     }
     return dates;
   };

@@ -23,9 +23,19 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "notification": {
+      "icon": "./assets/mapu.png",
+      "color": "#007AFF",
+      "androidMode": "default",
+      "androidCollapsedTitle": "EPS MAPU",
+      "iosDisplayInForeground": true
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mapuapp.mapu"
+      "bundleIdentifier": "com.mapuapp.mapu",
+      "infoPlist": {
+        "UIBackgroundModes": ["background-processing", "background-fetch"]
+      }
     },
     "android": {
       "useNextNotificationsApi": true,
@@ -36,7 +46,10 @@
         "ACCESS_NETWORK_STATE",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
       ],
       "usesCleartextTraffic": true,
       "adaptiveIcon": {

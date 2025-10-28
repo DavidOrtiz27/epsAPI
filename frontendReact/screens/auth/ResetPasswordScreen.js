@@ -202,7 +202,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 
           {/* New Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Nueva Contraseña</Text>
             <CustomInput
               label="Nueva Contraseña"
               value={password}
@@ -216,7 +215,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 
           {/* Confirm Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Confirmar Nueva Contraseña</Text>
             <CustomInput
               label="Confirmar Contraseña"
               value={confirmPassword}

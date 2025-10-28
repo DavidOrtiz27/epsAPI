@@ -218,12 +218,12 @@ const AdminDoctorDetail = ({ navigation, route }) => {
         {doctor.horarios_medicos && doctor.horarios_medicos.length > 0 && (
           renderInfoSection('Horarios de Atención', 'time-outline', (
             <View style={styles.schedulesContainer}>
-              {doctor.horarios_medicos
+              {Array.isArray(doctor.horarios_medicos) ? doctor.horarios_medicos
                 .sort((a, b) => {
                   const daysOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
                   return daysOrder.indexOf(a.dia_semana) - daysOrder.indexOf(b.dia_semana);
                 })
-                .map(schedule => renderScheduleItem(schedule))
+                .map(schedule => renderScheduleItem(schedule)) : []
               }
             </View>
           ))
@@ -277,7 +277,7 @@ const AdminDoctorDetail = ({ navigation, route }) => {
         {/* Recent Activity */}
         {doctor.citas && doctor.citas.length > 0 && (
           renderInfoSection('Citas Recientes', 'calendar-outline', (
-            doctor.citas
+            (Array.isArray(doctor.citas) ? doctor.citas : [])
               .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
               .slice(0, 5)
               .map((cita) => (
