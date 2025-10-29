@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import notificationService from '../../services/NotificationService';
 
 const AdminPatients = ({ navigation }) => {
   const { user } = useAuth();
@@ -94,7 +95,20 @@ const AdminPatients = ({ navigation }) => {
 
   const deletePatient = async (patientId) => {
     try {
+      const patientToDelete = patients.find(p => p.id === patientId);
       await apiService.deletePatient(patientId);
+      
+      // Send notification for patient deletion
+      try {
+        await notificationService.showUserAction(
+          'delete',
+          patientToDelete?.user?.name || 'Paciente',
+          'Paciente eliminado correctamente del sistema'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send patient deletion notification:', notificationError);
+      }
+      
       Alert.alert('Éxito', 'Paciente eliminado correctamente');
       loadPatients();
     } catch (error) {

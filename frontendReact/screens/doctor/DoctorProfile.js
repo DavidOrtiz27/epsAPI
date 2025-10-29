@@ -14,11 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import notificationService from '../../services/NotificationService';
 import CustomButton from '../../components/ui/CustomButton';
 import CustomInput from '../../components/ui/CustomInput';
 
 const DoctorProfile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigation = useNavigation();
   const [doctorData, setDoctorData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,24 +114,43 @@ const DoctorProfile = () => {
     try {
       // Load appointments to calculate statistics
       const appointments = await apiService.getDoctorAppointments();
+      
+      // Load doctor's patients (all patients, not just those with appointments)
+      const patients = await apiService.request('/medicos/pacientes');
 
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      
       const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
+      weekStart.setDate(today.getDate() - today.getDay()); // Domingo de esta semana
+      
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
       // Calculate statistics
-      const patients = new Set(appointments.map(apt => apt.paciente_id)).size;
+      const totalPatients = patients.length; // Count all assigned patients
+      
+      // Citas hoy (solo las de hoy)
       const todayAppointments = appointments.filter(apt => {
         const aptDate = new Date(apt.fecha);
-        return aptDate >= today && aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        return aptDate >= today && aptDate < tomorrow;
       }).length;
-      const thisWeekAppointments = appointments.filter(apt => new Date(apt.fecha) >= weekStart).length;
-      const thisMonthAppointments = appointments.filter(apt => new Date(apt.fecha) >= monthStart).length;
+      
+      // Citas de esta semana (desde domingo hasta hoy)
+      const thisWeekAppointments = appointments.filter(apt => {
+        const aptDate = new Date(apt.fecha);
+        return aptDate >= weekStart && aptDate <= now;
+      }).length;
+      
+      // Citas de este mes (desde el 1ro hasta hoy)
+      const thisMonthAppointments = appointments.filter(apt => {
+        const aptDate = new Date(apt.fecha);
+        return aptDate >= monthStart && aptDate <= now;
+      }).length;
 
       setStats({
-        patients,
+        patients: totalPatients,
         todayAppointments,
         thisWeek: thisWeekAppointments,
         thisMonth: thisMonthAppointments,
@@ -185,6 +205,17 @@ const DoctorProfile = () => {
         body: JSON.stringify(updateData),
       });
 
+      // Send notification for profile update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu perfil',
+          'Perfil actualizado correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send profile update notification:', notificationError);
+      }
+
       // Reload doctor data to get updated information
       await loadDoctorData();
       setShowEditModal(false);
@@ -230,6 +261,17 @@ const DoctorProfile = () => {
         password: securityFormData.currentPassword,
       });
 
+      // Send notification for email update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu cuenta',
+          'Email actualizado correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send email update notification:', notificationError);
+      }
+
       // Update user context with new email
       const updatedUser = { ...user, email: securityFormData.newEmail };
       updateUser(updatedUser);
@@ -259,6 +301,17 @@ const DoctorProfile = () => {
         password: securityFormData.newPassword,
         password_confirmation: securityFormData.newPassword_confirmation,
       });
+
+      // Send notification for password update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu cuenta',
+          'Contraseña actualizada correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send password update notification:', notificationError);
+      }
 
       setSecurityFormData(prev => ({
         ...prev,
@@ -403,7 +456,7 @@ const DoctorProfile = () => {
 
              <TouchableOpacity
                style={styles.actionCard}
-               onPress={() => navigation.navigate('DoctorHelp')}
+               onPress={() => navigation.navigate('HelpCenter')}
              >
                <Ionicons name="help-circle-outline" size={24} color="#007AFF" />
                <Text style={styles.actionCardText}>Ayuda</Text>

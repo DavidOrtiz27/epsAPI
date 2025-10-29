@@ -63,10 +63,10 @@ class AdminController extends Controller
 
             // Doctor performance statistics
             $doctoresActivos = DB::table('citas')
-                ->select('medico_id')
-                ->where('fecha', '>=', now()->subDays(30)->toDateString())
-                ->distinct()
-                ->count();
+                ->join('medicos', 'citas.medico_id', '=', 'medicos.id')
+                ->where('citas.fecha', '>=', now()->subDays(30)->toDateString())
+                ->distinct('citas.medico_id')
+                ->count('citas.medico_id');
 
             // Specialty distribution
             $especialidades = DB::table('medicos')

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import { notificationService } from '../../services';
 
 const AdminAppointments = ({ navigation }) => {
   const { user } = useAuth();
@@ -115,6 +116,20 @@ const AdminAppointments = ({ navigation }) => {
     try {
       // Use the general appointment update endpoint instead of the doctor-specific one
       await apiService.updateAppointment(appointmentId, { estado: newStatus });
+      
+      // Get the appointment details for notification
+      const appointment = appointments.find(apt => apt.id === appointmentId);
+      
+      // Send notification for status change
+      try {
+        await notificationService.showAppointmentStatusUpdate(
+          appointment,
+          newStatus
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send appointment status notification:', notificationError);
+      }
+      
       Alert.alert('Éxito', 'Estado de la cita actualizado correctamente');
       loadAppointments(); // Refresh the list
     } catch (error) {

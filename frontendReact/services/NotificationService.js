@@ -242,6 +242,47 @@ class NotificationService {
     }
   }
 
+  // Notificación para acciones de usuario (admin)
+  async showUserAction(action, userName, message) {
+    try {
+      let title = '';
+      let emoji = '';
+
+      switch (action) {
+        case 'delete':
+          emoji = '🗑️';
+          title = 'Usuario eliminado';
+          break;
+        case 'update':
+          emoji = '⚙️';
+          title = 'Usuario actualizado';
+          break;
+        case 'create':
+          emoji = '👤';
+          title = 'Usuario creado';
+          break;
+        default:
+          emoji = '📋';
+          title = 'Acción de usuario';
+      }
+
+      const notification = {
+        title: `${emoji} ${title}`,
+        body: message || `Acción realizada en el usuario: ${userName}`,
+        data: { 
+          type: 'user_action',
+          subtype: action,
+          userName: userName,
+          timestamp: new Date().toISOString()
+        },
+      };
+
+      await this.sendLocalNotification(notification);
+    } catch (error) {
+      console.error('❌ Error sending user action notification:', error);
+    }
+  }
+
   // Enviar notificación local
   async sendLocalNotification(notificationContent) {
     try {

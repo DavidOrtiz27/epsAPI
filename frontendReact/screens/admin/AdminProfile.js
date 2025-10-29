@@ -10,12 +10,14 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
 import CustomInput from '../../components/ui/CustomInput';
 import CustomButton from '../../components/ui/CustomButton';
 
 const AdminProfile = () => {
+  const navigation = useNavigation();
   const { user, logout, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
@@ -117,6 +119,9 @@ const AdminProfile = () => {
             <Text style={styles.subtitle}>Información administrativa</Text>
           </View>
           <View style={styles.headerButtons}>
+            <TouchableOpacity onPress={() => navigation.navigate('HelpCenter')} style={styles.helpButton}>
+              <Ionicons name="help-circle-outline" size={20} color="#007AFF" />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowSecurityModal(true)} style={styles.securityButton}>
               <Ionicons name="shield-checkmark" size={20} color="#007AFF" />
             </TouchableOpacity>
@@ -300,6 +305,10 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  helpButton: {
+    padding: 8,
+    marginRight: 8,
   },
   securityButton: {
     padding: 8,

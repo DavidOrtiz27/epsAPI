@@ -769,9 +769,7 @@ const DoctorAppointmentDetail = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Historial Médico</Text>
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
-            </TouchableOpacity>
+          
           </View>
           
           {medicalRecords.length > 0 ? (

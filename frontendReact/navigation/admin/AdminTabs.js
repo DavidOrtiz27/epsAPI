@@ -23,6 +23,9 @@ import {
   AdminProfile,
 } from '../../screens/admin';
 
+// Shared screens
+import { HelpCenter } from '../../screens/shared';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -67,6 +70,7 @@ const ReportsStack = () => (
 const ProfileStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="AdminProfile" component={AdminProfile} />
+    <Stack.Screen name="HelpCenter" component={HelpCenter} />
   </Stack.Navigator>
 );
 

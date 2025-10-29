@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import notificationService from '../../services/NotificationService';
 import { CustomInput, CustomButton, CustomDatePicker, CustomGenderPicker } from '../../components/ui';
 
 const PatientProfile = () => {
@@ -144,6 +145,18 @@ const PatientProfile = () => {
       console.log('Sending update data:', updateData); // Debug log
 
       await apiService.updatePatientProfile(updateData);
+      
+      // Send notification for profile update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu perfil',
+          'Perfil actualizado correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send profile update notification:', notificationError);
+      }
+      
       await loadProfile(); // Reload profile data
       setShowEditModal(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
@@ -191,6 +204,17 @@ const PatientProfile = () => {
         password: securityFormData.currentPassword,
       });
 
+      // Send notification for email update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu cuenta',
+          'Email actualizado correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send email update notification:', notificationError);
+      }
+
       // Update user context with new email
       const updatedUser = { ...user, email: securityFormData.newEmail };
       updateUser(updatedUser);
@@ -220,6 +244,17 @@ const PatientProfile = () => {
         password: securityFormData.newPassword,
         password_confirmation: securityFormData.newPassword_confirmation,
       });
+
+      // Send notification for password update
+      try {
+        await notificationService.showUserAction(
+          'update',
+          user?.name || 'Tu cuenta',
+          'Contraseña actualizada correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send password update notification:', notificationError);
+      }
 
       setSecurityFormData(prev => ({
         ...prev,
@@ -267,6 +302,9 @@ const PatientProfile = () => {
             <Text style={styles.subtitle}>Información personal</Text>
           </View>
           <View style={styles.headerButtons}>
+            <TouchableOpacity onPress={() => navigation.navigate('HelpCenter')} style={styles.helpButton}>
+              <Ionicons name="help-circle-outline" size={20} color="#007AFF" />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowEditModal(true)} style={styles.editButton}>
               <Ionicons name="pencil" size={20} color="#007AFF" />
             </TouchableOpacity>
@@ -558,6 +596,10 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  helpButton: {
+    padding: 8,
+    marginRight: 8,
   },
   editButton: {
     padding: 8,

@@ -159,7 +159,7 @@ class ApiService {
 ```javascript
 const getApiBaseUrl = () => {
   if (Platform.OS === 'android') {
-    return 'http://10.2.234.100:8000/api'; // IP física para dispositivo
+    return 'http://10.2.233.61:8000/api'; // IP física para dispositivo
   }
   return 'http://localhost:8000/api'; // localhost para simulador
 };

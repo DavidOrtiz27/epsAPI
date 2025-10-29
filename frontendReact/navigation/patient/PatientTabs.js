@@ -14,6 +14,9 @@ import {
   PatientBookAppointment
 } from '../../screens/patient';
 
+// Shared screens
+import { HelpCenter } from '../../screens/shared';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -36,6 +39,31 @@ const AppointmentsStack = () => {
         component={PatientBookAppointment}
         options={{
           title: 'Agendar Cita',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+const ProfileStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen
+        name="PatientProfile"
+        component={PatientProfile}
+        options={{
+          title: 'Mi Perfil',
+        }}
+      />
+      <Stack.Screen
+        name="HelpCenter"
+        component={HelpCenter}
+        options={{
+          title: 'Centro de Ayuda',
         }}
       />
     </Stack.Navigator>
@@ -101,7 +129,7 @@ const TabNavigator = () => {
         />
         <Tab.Screen
           name="Perfil"
-          component={PatientProfile}
+          component={ProfileStack}
           options={{
             title: 'Mi Perfil',
           }}

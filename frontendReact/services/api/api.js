@@ -12,7 +12,7 @@ const API_CONFIG = {
   EMULATOR: 'http://10.0.2.2:8000/api',
   
   // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
-  PHYSICAL_DEVICE: 'http://192.168.1.23:8000/api',
+  PHYSICAL_DEVICE: 'http://10.2.233.61:8000/api',
   
   // 💻 Para DESARROLLO LOCAL (web/desktop)
   LOCAL: 'http://localhost:8000/api',

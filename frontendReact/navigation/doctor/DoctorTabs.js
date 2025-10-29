@@ -14,8 +14,10 @@ import {
   DoctorSchedule,
   DoctorAppointmentDetail,
   DoctorReports,
-  DoctorHelp
 } from '../../screens/doctor';
+
+// Shared screens
+import { HelpCenter } from '../../screens/shared';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -129,8 +131,8 @@ const DoctorTabs = () => {
             }}
           />
           <Stack.Screen
-            name="DoctorHelp"
-            component={DoctorHelp}
+            name="HelpCenter"
+            component={HelpCenter}
             options={{
               title: 'Centro de Ayuda',
               headerLeft: null,

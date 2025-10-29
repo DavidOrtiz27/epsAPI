@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import notificationService from '../../services/NotificationService';
 
 const AdminUsers = ({ navigation }) => {
   const { user } = useAuth();
@@ -100,7 +101,20 @@ const AdminUsers = ({ navigation }) => {
 
   const deleteUser = async (userId) => {
     try {
+      const userToDelete = users.find(u => u.id === userId);
       await apiService.deleteUser(userId);
+      
+      // Send notification for user deletion
+      try {
+        await notificationService.showUserAction(
+          'delete',
+          userToDelete?.name || 'Usuario',
+          'Usuario eliminado correctamente'
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send user deletion notification:', notificationError);
+      }
+      
       Alert.alert('Éxito', 'Usuario eliminado correctamente');
       loadUsers();
     } catch (error) {
@@ -117,6 +131,18 @@ const AdminUsers = ({ navigation }) => {
   const updateUserRoles = async (newRoles) => {
     try {
       await apiService.updateUserRoles(selectedUser.id, { roles: newRoles });
+      
+      // Send notification for role change
+      try {
+        await notificationService.showUserAction(
+          'update',
+          selectedUser?.name || 'Usuario',
+          `Roles actualizados: ${newRoles.join(', ')}`
+        );
+      } catch (notificationError) {
+        console.log('⚠️ Could not send role update notification:', notificationError);
+      }
+      
       Alert.alert('Éxito', 'Roles actualizados correctamente');
       setRoleModalVisible(false);
       setSelectedUser(null);
