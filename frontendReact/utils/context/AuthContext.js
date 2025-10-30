@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../../services/api/api';
 import { notificationService } from '../../services';
+import { NotificationPermissionAlert } from '../../components/NotificationPermissionAlert';
 
 const AuthContext = createContext();
 
@@ -61,12 +62,55 @@ export const AuthProvider = ({ children }) => {
       setUser(response.user);
       setToken(response.token);
 
-      // Enviar notificación de login exitoso
+      // 🔔 Solicitar permisos de notificaciones después del login
       try {
-        const userName = response.user?.name || response.user?.nombre || 'Usuario';
-        await notificationService.showLoginSuccess(userName);
+        console.log('🔔 Solicitando permisos de notificaciones después del login...');
+        const permissionResult = await notificationService.requestNotificationPermissionsOnLogin();
+        console.log('📝 Resultado de permisos:', permissionResult);
+        
+        if (permissionResult.success) {
+          console.log('✅ Permisos de notificaciones configurados correctamente');
+          
+          // Registrar token en el backend
+          try {
+            console.log('📡 Registrando token de notificaciones en el backend...');
+            const registerResult = await notificationService.registerTokenWithBackend();
+            
+            if (registerResult.success) {
+              console.log('✅ Token registrado en backend exitosamente');
+            } else {
+              console.log('⚠️ No se pudo registrar token en backend:', registerResult.error);
+            }
+          } catch (backendError) {
+            console.log('⚠️ Error registrando token en backend:', backendError);
+          }
+          
+          // Mostrar alerta de confirmación (opcional, solo primera vez)
+          if (permissionResult.reason === 'newly_granted') {
+            NotificationPermissionAlert.showPermissionGrantedAlert();
+          }
+          
+          // Enviar notificación de login exitoso
+          const userName = response.user?.name || response.user?.nombre || 'Usuario';
+          await notificationService.showLoginSuccess(userName);
+          
+        } else {
+          console.log('⚠️ Permisos de notificaciones no disponibles:', permissionResult.reason);
+          
+          // Mostrar alertas según el motivo
+          switch (permissionResult.reason) {
+            case 'denied':
+              NotificationPermissionAlert.showPermissionDeniedAlert();
+              break;
+            case 'not_device':
+              NotificationPermissionAlert.showNotDeviceAlert();
+              break;
+            default:
+              console.log('💡 Razón de fallo:', permissionResult.reason);
+          }
+        }
       } catch (notificationError) {
-        console.log('⚠️ Could not send login notification:', notificationError);
+        console.log('⚠️ Error configurando notificaciones:', notificationError);
       }
 
       return response;

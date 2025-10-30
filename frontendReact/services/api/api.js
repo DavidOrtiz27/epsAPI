@@ -12,10 +12,13 @@ const API_CONFIG = {
   EMULATOR: 'http://10.0.2.2:8000/api',
   
   // 📱 Para DISPOSITIVO FÍSICO (celular real conectado por USB/WiFi)
-  PHYSICAL_DEVICE: 'http://10.2.233.61:8000/api',
+  PHYSICAL_DEVICE: 'http://192.168.1.23:8000/api',
   
   // 💻 Para DESARROLLO LOCAL (web/desktop)
   LOCAL: 'http://localhost:8000/api',
+  
+  // 🌐 Para NGROK TUNNEL (acceso público desde cualquier lugar)
+  NGROK: 'https://9fe9286a5851.ngrok-free.app/api',
   
   // 🌐 Para PRODUCCIÓN (servidor remoto)
   PRODUCTION: 'https://tu-servidor-produccion.com/api'
@@ -25,37 +28,124 @@ const API_CONFIG = {
 // 🔍 DETECCIÓN AUTOMÁTICA DE ENTORNO
 // =================================================================
 const detectEnvironment = () => {
+  console.log('🔍 Detectando entorno...');
+  console.log('Platform.OS:', Platform.OS);
+  console.log('Platform.constants:', Platform.constants);
+  
   if (Platform.OS === 'web') {
+    console.log('✅ Detectado: WEB');
     return 'LOCAL';
   }
   
   if (Platform.OS === 'android') {
-    // Detectar si es emulador Android2
-    const isEmulator = Platform.constants?.Brand === 'google' && 
-                      Platform.constants?.Model?.includes('sdk');
+    // Detectar si es emulador Android
+    const constants = Platform.constants || {};
+    const brand = constants.Brand || constants.brand || '';
+    const model = constants.Model || constants.model || '';
+    const manufacturer = constants.Manufacturer || constants.manufacturer || '';
     
+    console.log('📱 Android detectado:');
+    console.log('  Brand:', brand);
+    console.log('  Model:', model);
+    console.log('  Manufacturer:', manufacturer);
+    
+    // Múltiples formas de detectar emulador
+    const isEmulator = (
+      brand.toLowerCase() === 'google' ||
+      model.toLowerCase().includes('sdk') ||
+      model.toLowerCase().includes('emulator') ||
+      manufacturer.toLowerCase().includes('google') ||
+      model.toLowerCase().includes('android sdk')
+    );
+    
+    console.log('🔍 ¿Es emulador?', isEmulator);
     return isEmulator ? 'EMULATOR' : 'PHYSICAL_DEVICE';
   }
   
   if (Platform.OS === 'ios') {
     // Para iOS, detectar simulador vs dispositivo físico
-    const isSimulator = Platform.constants?.interfaceIdiom === 'simulator' ||
-                       Platform.constants?.model?.includes('Simulator');
+    const constants = Platform.constants || {};
+    const model = constants.model || '';
+    const name = constants.name || '';
     
+    console.log('🍎 iOS detectado:');
+    console.log('  Model:', model);
+    console.log('  Name:', name);
+    
+    const isSimulator = (
+      model.toLowerCase().includes('simulator') ||
+      name.toLowerCase().includes('simulator')
+    );
+    
+    console.log('🔍 ¿Es simulador?', isSimulator);
     return isSimulator ? 'EMULATOR' : 'PHYSICAL_DEVICE';
   }
   
+  console.log('⚠️ Plataforma no reconocida, usando LOCAL');
   return 'LOCAL';
 };
 
 const getApiBaseUrl = () => {
-  const environment = detectEnvironment();
+  // 🌐 CONFIGURACIÓN FLEXIBLE DE ENTORNO
+  // 
+  // OPCIONES:
+  // - null/undefined: Detección automática
+  // - 'NGROK': Tunnel público para testing
+  // - 'PHYSICAL_DEVICE': Red WiFi local  
+  // - 'EMULATOR': Para emulador Android/iOS
+  // - 'LOCAL': Para desarrollo web
+  // - 'PRODUCTION': Para servidor de producción
+  
+  const FORCE_ENVIRONMENT = 'NGROK'; // Cambia a null para detección automática
+  
+  let environment;
+  
+  if (FORCE_ENVIRONMENT) {
+    environment = FORCE_ENVIRONMENT;
+    console.log(`🔧 Entorno forzado: ${environment}`);
+  } else {
+    environment = detectEnvironment();
+    console.log(`🤖 Entorno detectado automáticamente: ${environment}`);
+  }
+  
   const url = API_CONFIG[environment];
+  
+  if (!url) {
+    console.error(`❌ No se encontró URL para el entorno: ${environment}`);
+    console.log('📋 Entornos disponibles:', Object.keys(API_CONFIG));
+    return API_CONFIG.LOCAL; // Fallback
+  }
+  
+  console.log(`🌐 API Environment: ${environment}`);
+  console.log(`🔗 API URL: ${url}`);
   
   return url;
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+// =================================================================
+// 🧪 FUNCIÓN DE TESTING PARA VERIFICAR DETECCIÓN
+// =================================================================
+const testPlatformDetection = () => {
+  console.log('🧪 === TEST DE DETECCIÓN DE PLATAFORMA ===');
+  console.log('📱 Platform.OS:', Platform.OS);
+  console.log('⚙️ Platform.constants:', Platform.constants);
+  
+  const detectedEnv = detectEnvironment();
+  console.log('🎯 Entorno detectado:', detectedEnv);
+  console.log('🔗 URL que se usaría:', API_CONFIG[detectedEnv]);
+  console.log('🌐 URL actual en uso:', API_BASE_URL);
+  console.log('🧪 === FIN DEL TEST ===');
+  
+  return {
+    platformOS: Platform.OS,
+    platformConstants: Platform.constants,
+    detectedEnvironment: detectedEnv,
+    suggestedURL: API_CONFIG[detectedEnv],
+    currentURL: API_BASE_URL
+  };
+};
 
 class ApiService {
   constructor() {
@@ -829,4 +919,10 @@ class ApiService {
   }
 }
 
-export default new ApiService();
+// Exportar servicio principal
+const apiService = new ApiService();
+
+// Exportar función de testing para debugging
+export { testPlatformDetection };
+
+export default apiService;

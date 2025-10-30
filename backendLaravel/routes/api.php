@@ -14,6 +14,7 @@ use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\EspecialidadController;
 use App\Http\Controllers\HorarioMedicoController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\AuditoriaController;
 use Illuminate\Http\Request;
@@ -180,6 +181,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Doctors and admins can view medications
     Route::middleware('role:doctor,admin,superadmin')->group(function () {
         Route::get('/medicamentos/search', [MedicamentoController::class, 'search']);
+    });
+
+    // ==========================================
+    // NOTIFICATIONS ROUTES
+    // ==========================================
+    Route::middleware('auth:sanctum')->group(function () {
+        // Register push token
+        Route::post('/notifications/register-token', [NotificationController::class, 'registerPushToken']);
+        
+        // Send notifications (admin/system use)
+        Route::post('/notifications/send', [NotificationController::class, 'sendPushNotification']);
+        Route::post('/notifications/appointment/new', [NotificationController::class, 'notifyNewAppointment']);
+        Route::post('/notifications/appointment/reminder', [NotificationController::class, 'sendAppointmentReminder']);
     });
 
     // ==========================================

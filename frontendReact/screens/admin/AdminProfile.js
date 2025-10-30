@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../utils/context/AuthContext';
 import apiService from '../../services/api/api';
+import notificationService from '../../services/NotificationService';
 import CustomInput from '../../components/ui/CustomInput';
 import CustomButton from '../../components/ui/CustomButton';
 
@@ -95,6 +96,46 @@ const AdminProfile = () => {
       Alert.alert('Éxito', 'Contraseña actualizada correctamente');
     } catch (error) {
       Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+    }
+  };
+
+  // 🧪 FUNCIONES DE PRUEBA PARA NOTIFICACIONES
+  const testNotifications = async () => {
+    try {
+      Alert.alert(
+        'Prueba de Notificaciones',
+        '¿Qué tipo de prueba quieres realizar?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Notificación Simple', 
+            onPress: async () => {
+              const result = await notificationService.sendTestNotification();
+              Alert.alert(
+                result ? 'Éxito' : 'Error',
+                result ? 'Notificación enviada. ¿La recibiste?' : 'Error enviando notificación'
+              );
+            }
+          },
+          { 
+            text: 'Diagnóstico Completo', 
+            onPress: async () => {
+              const diagnosis = await notificationService.diagnoseNotifications();
+              console.log('🔍 Diagnóstico:', diagnosis);
+              Alert.alert(
+                'Diagnóstico de Notificaciones',
+                `Dispositivo Real: ${diagnosis.isDevice ? 'Sí' : 'No'}\n` +
+                `Permisos: ${diagnosis.permissions?.status || 'No disponible'}\n` +
+                `Token: ${diagnosis.hasToken ? 'Disponible' : 'No disponible'}\n` +
+                `Project ID: ${diagnosis.projectId ? 'Configurado' : 'No configurado'}\n` +
+                `Prueba: ${diagnosis.testSent ? 'Éxito' : 'Fallo'}`
+              );
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Error ejecutando prueba: ' + error.message);
     }
   };
 

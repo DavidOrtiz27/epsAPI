@@ -137,6 +137,20 @@ class CitaController extends Controller
         \Log::info('Saved appointment fecha in database: ' . $cita->fecha);
         \Log::info('Fecha formatted as ISO: ' . $cita->fecha->toISOString());
 
+        // 🔔 Enviar notificaciones push
+        try {
+            \Log::info('Enviando notificaciones para nueva cita ID: ' . $cita->id);
+            
+            $notificationController = new \App\Http\Controllers\NotificationController();
+            $notificationRequest = new \Illuminate\Http\Request(['cita_id' => $cita->id]);
+            $notificationController->notifyNewAppointment($notificationRequest);
+            
+            \Log::info('Notificaciones enviadas exitosamente para cita ID: ' . $cita->id);
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificaciones para nueva cita: ' . $e->getMessage());
+            // No fallar la creación de cita por error de notificaciones
+        }
+
         return response()->json($cita->load(['paciente.user', 'medico.user']), 201);
     }
 

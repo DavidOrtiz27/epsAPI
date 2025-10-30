@@ -34,11 +34,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mapuapp.mapu",
       "infoPlist": {
-        "UIBackgroundModes": ["background-processing", "background-fetch"]
+        "UIBackgroundModes": [
+          "background-processing",
+          "background-fetch"
+        ]
       }
     },
     "android": {
-      "useNextNotificationsApi": true,
       "package": "com.mapuapp.mapu",
       "versionCode": 1,
       "permissions": [
@@ -49,9 +51,11 @@
         "WRITE_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK"
       ],
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/mapu.png",
         "backgroundColor": "#007AFF"
@@ -64,6 +68,17 @@
       "eas": {
         "projectId": "7139d21d-656b-4c22-9e30-58ac748551f1"
       }
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/mapu.png",
+          "color": "#007AFF",
+          "defaultChannel": "default"
+        }
+      ]
+    ]
   }
 }
